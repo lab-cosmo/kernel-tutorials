@@ -1,0 +1,11 @@
+/Notes
+main*
+.ipynb_checkpoints
+*__pycache__
+*temp*
+/datasets/*
+/analysis/workspace/*/data_files
+/analysis/workspace/*/*npz
+/analysis/*signac*
+/deprecated/*
+*Untitled*
