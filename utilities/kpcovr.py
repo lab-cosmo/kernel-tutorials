@@ -162,10 +162,10 @@ class KPCovR:
             Y:              dependent (response) variable
 
             ---Returns---
-            W:              Weights projecting X into latent PCA-space
-            T:              Projection of X in latent PCA-space
-            P:              Projector from latent PCA-space to Y-space
-            Px:             Projector from latent PCA-space to X-space
+            PKT:              Weights projecting kernel into latent PCA-space
+            T:              Projection of kernel in latent PCA-space
+            PTY:              Projector from latent PCA-space to Y-space
+            PTK:             Projector from latent PCA-space to kernel-space
         """
 
         if(K is None):
@@ -374,10 +374,10 @@ class SparseKPCovR:
             Y:              dependent (response) variable
 
             ---Returns---
-            W:              Weights projecting X into latent PCA-space
-            T:              Projection of X in latent PCA-space
-            P:              Projector from latent PCA-space to Y-space
-            Px:             Projector from latent PCA-space to X-space
+            PKT:              Weights projecting K into latent PCA-space
+            T:              Projection of K in latent PCA-space
+            PTY:              Projector from latent PCA-space to Y-space
+            PTX:             Projector from latent PCA-space to X-space
         """
 
         if(X_sparse is None):

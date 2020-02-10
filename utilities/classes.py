@@ -98,7 +98,7 @@ class LR:
     """
 
     def __init__(self, regularization=1e-12):
-        self.W = None
+        self.PXY = None
         self.regularization = regularization
 
     def fit(self, X, Y):
@@ -116,8 +116,8 @@ class LR:
         XTX = np.linalg.pinv(XTX)
 
         # Compute LR solution
-        self.W = np.matmul(XTX, X.T)
-        self.W = np.matmul(self.W, Y)
+        self.PXY = np.matmul(XTX, X.T)
+        self.PXY = np.matmul(self.PXY, Y)
 
     def transform(self, X):
         """
@@ -128,7 +128,7 @@ class LR:
         """
 
         # Compute predicted Y
-        Yp = np.matmul(X, self.W)
+        Yp = np.matmul(X, self.PXY)
 
         return Yp
 
@@ -255,7 +255,7 @@ class KRR:
     def __init__(self, regularization=1.0E-16, kernel_type="linear"):
 
         self.regularization = regularization
-        self.W = None
+        self.PKY = None
         self.X = None
 
         if(isinstance(kernel_type, str)):
@@ -284,10 +284,10 @@ class KRR:
         Kreg = K + np.eye(K.shape[0])*maxeig*self.regularization
 
         # Solve the model
-        self.W = np.linalg.solve(Kreg, Y)
+        self.PKY = np.linalg.solve(Kreg, Y)
 
     def transform(self, X=None, K=None):
-        if self.W is None:
+        if self.PKY is None:
             print("Error: must fit the KPCA before transforming")
         elif X is None and K is None:
             print("Either the kernel or input data must be specified.")
@@ -298,7 +298,7 @@ class KRR:
                 K = self.kernel(X, self.X)
                 K = center_kernel(K, reference=self.K)
 
-            Yp = np.matmul(K, self.W)
+            Yp = np.matmul(K, self.PKY)
 
             return Yp
 
@@ -466,18 +466,18 @@ class SparseKRR:
             Knm = center_kernel(Knm, Kmm)
 
         # Compute max eigenvalue of regularized model
-        W = np.linalg.pinv(np.matmul(Knm.T, Knm) + self.regularization*Kmm)
-        W = np.matmul(W, Knm.T)
-        self.W = np.matmul(W, Y)
+        PKY = np.linalg.pinv(np.matmul(Knm.T, Knm) + self.regularization*Kmm)
+        PKY = np.matmul(PKY, Knm.T)
+        self.PKY = np.matmul(PKY, Y)
 
     def transform(self, X, Knm=None):
-        if self.W is None:
+        if self.PKY is None:
             print("Error: must fit the KRR model before transforming")
         else:
             if(Knm is None):
                 Knm = self.kernel(X, self.X_sparse)
 
-            Yp = np.matmul(Knm, self.W)
+            Yp = np.matmul(Knm, self.PKY)
 
             return Yp
 
