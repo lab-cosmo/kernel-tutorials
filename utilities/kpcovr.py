@@ -170,8 +170,10 @@ class KPCovR:
 
         if(K is None):
             K = self.kernel(X, X)
+            self.K = K
             K = center_kernel(K)
-        self.K = K
+        else:
+            self.K = K
 
         if(X is not None):
             self.X = X
@@ -383,18 +385,18 @@ class SparseKPCovR:
 
         if(Kmm is None):
             Kmm = self.kernel(self.X_sparse, self.X_sparse)
+            self.Kmm = Kmm
             Kmm = center_kernel(Kmm)
-
-        self.Kmm = Kmm
+        else:
+            self.Kmm = Kmm
 
         if(Knm is None):
             Knm = self.kernel(X, self.X_sparse)
             Knm = center_kernel(Knm, reference=self.Kmm)
-
         self.Knm = Knm
 
         vmm, Umm = sorted_eig(
-            self.Kmm, thresh=self.regularization, n=self.n_active)
+            Kmm, thresh=self.regularization, n=self.n_active)
         vmm_inv = eig_inv(vmm[:self.n_active-1])
 
         self.barKM = np.mean(self.Knm, axis=0)
