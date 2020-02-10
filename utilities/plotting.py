@@ -258,5 +258,4 @@ def check_mirrors(X1, X2):
     else:
         yflip = 1
 
-    # return np.multiply(Xscale,(xflip, yflip)*X[:,:2])
     return (xflip, yflip)*X1[:, :2]
