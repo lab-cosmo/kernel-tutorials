@@ -608,7 +608,11 @@ class PCovR:
         # Compute K
         lr = LR(regularization=self.regularization)
         lr.fit(X, Y)
-        self.Yhat = lr.transform(X).reshape((-1, Y.shape[-1]))
+
+        self.Yhat = lr.transform(X)
+
+        if(len(Y.shape)==1):
+            self.Yhat = self.Yhat.reshape(-1, 1)
 
         K_pca = np.matmul(X, X.T)  # /np.linalg.norm(X)**2
         K_lr = np.matmul(self.Yhat, self.Yhat.T)  # /np.linalg.norm(Y)**2
@@ -660,7 +664,11 @@ class PCovR:
         P_lr = np.matmul(X.T, X) + np.eye(X.shape[1])*self.regularization
         P_lr = np.linalg.pinv(P_lr)
         P_lr = np.matmul(P_lr, X.T)
-        P_lr = np.matmul(P_lr, Y).reshape((-1, Y.shape[-1]))
+        P_lr = np.matmul(P_lr, Y)
+
+        if(len(Y.shape)==1):
+            P_lr = P_lr.reshape((-1,1))
+
         P_lr = np.matmul(P_lr, self.Yhat.T)  # /np.linalg.norm(Y)**2
 
         P_pca = X.T
