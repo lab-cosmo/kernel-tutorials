@@ -186,7 +186,10 @@ class KPCovR:
 
         krr = KRR(regularization=self.regularization, kernel_type=self.kernel)
         krr.fit(X=X, Y=Y, K=K)
-        Yhat = krr.transform(X=X, K=K).reshape(-1, Y.shape[-1])
+        Yhat = krr.transform(X=X, K=K)
+
+        if(len(Y.shape)==1):
+            Yhat = Yhat.reshape(-1, 1)
 
         K_pca = K/(np.trace(K)/X.shape[0])
         K_lr = np.matmul(Yhat, Yhat.T)
@@ -424,7 +427,12 @@ class SparseKPCovR:
         C_lr = np.matmul(phi_active.T, C_lr)
         C_lr = np.matmul(iCsqrt, C_lr)
         C_lr = np.matmul(C_lr, phi_active.T)
-        C_lr = np.matmul(C_lr, Y.reshape(-1, Y.shape[-1]))
+
+        if(len(Y.shape)==1):
+            C_lr = np.matmul(C_lr, Y.reshape(-1, 1))
+        else:
+            C_lr = np.matmul(C_lr, Y)
+
         C_lr = np.matmul(C_lr, C_lr.T)
 
         Ct = self.alpha*C_pca + (1-self.alpha)*C_lr
