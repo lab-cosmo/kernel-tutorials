@@ -32,21 +32,21 @@ def compute_P(A_c, S, A_r, thresh=1e-12):
 
 def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
     """ Creates the PCovR modified covariance"""
-    
+
     cov = np.matmul(X.T, X)
     v_C, U_C = sorted_eig(cov, thresh=regularization)
     U_C = U_C[:,v_C>regularization]
     v_C = v_C[v_C>regularization]
-    
+
     Csqrt = np.matmul(np.matmul(U_C, np.diag(np.sqrt(v_C))), U_C.T)
     Cinv = np.matmul(np.matmul(U_C, np.diag(1.0/(v_C))), U_C.T)
-    
+
     C_lr = np.matmul(Cinv, np.matmul(X.T,Y))
     C_lr = np.matmul(Csqrt, C_lr)
     C_lr = np.matmul(C_lr, C_lr.T)
-    
+
     C_pca = cov
-    
+
     C =  alpha*C_pca +  (1.0-alpha)*C_lr
 
     return C
@@ -144,7 +144,10 @@ class CUR:
         self.symmetric = self.A.shape == self.A.T.shape and \
             np.all(np.abs(self.A-self.A.T)) < tol
         self.fs = feature_select
-        self.select = selections[pi_function]
+        if(isinstance(pi_function, str)):
+            self.select = selections.get(pi_function, None)
+        else:
+            self.select = pi_function
         self.params = params
 
         if(pi_function == 'pcovr'):
