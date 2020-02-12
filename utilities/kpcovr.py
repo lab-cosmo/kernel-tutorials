@@ -268,7 +268,7 @@ class KPCovR:
             K = self.kernel(X, self.X)
 
             K = center_kernel(K, reference=self.K)
-        else:
+        elif(K is None):
             raise ValueError(
                 "Must provide a kernel or a feature vector, in which case the train features should be available in the class")
 
