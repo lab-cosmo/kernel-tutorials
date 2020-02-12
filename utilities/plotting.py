@@ -93,7 +93,11 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0,
     kwargs.pop('cmapX')
 
     if('color' not in kwargs):
-        kwargs['c'] = Y[:, 0]*Y_scale + Y_center
+        if len(Y.shape) != 1:
+            print("Only using first column of Y")
+            Y = Y[:, 0]
+
+        kwargs['c'] = Y*Y_scale + Y_center
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "CS")
     kwargs['x_label'] = kwargs.get('x_label', r'$PC_1$')
