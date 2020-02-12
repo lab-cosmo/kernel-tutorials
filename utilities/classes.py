@@ -376,10 +376,10 @@ class SparseKPCA:
         self.v_C, self.U_C = sorted_eig(
             C, thresh=self.regularization, n=self.n_active)
 
-        self.PKT = np.matmul(self.U_active, self.U_C)
+        self.PKT = np.matmul(self.U_active, self.U_C[:, :self.n_KPCA])
         self.T = np.matmul(Knm-self.barKM, self.PKT)
         self.PTX = np.matmul(np.diagflat(
-            eig_inv(self.v_C[:self.n_active-1])), np.matmul(self.T.T, X))
+            eig_inv(self.v_C[:self.n_KPCA])), np.matmul(self.T.T, X))
 
     def transform(self, X, Knm=None):
         if self.PKT is None:
@@ -527,7 +527,7 @@ class MDS:
         """
 
         # Compute covariance
-        self.K = np.matmul(X, X.T)  
+        self.K = np.matmul(X, X.T)
 
         # Compute eigendecomposition of covariance matrix
         v, U = sorted_eig(self.K, thresh=self.regularization, n=self.n_MDS)
@@ -614,8 +614,8 @@ class PCovR:
         if(len(Y.shape)==1):
             self.Yhat = self.Yhat.reshape(-1, 1)
 
-        K_pca = np.matmul(X, X.T)  
-        K_lr = np.matmul(self.Yhat, self.Yhat.T)  
+        K_pca = np.matmul(X, X.T)
+        K_lr = np.matmul(self.Yhat, self.Yhat.T)
 
         self.K = (self.alpha*K_pca) + (1.0-self.alpha)*K_lr
 
@@ -669,7 +669,7 @@ class PCovR:
         if(len(Y.shape)==1):
             P_lr = P_lr.reshape((-1,1))
 
-        P_lr = np.matmul(P_lr, self.Yhat.T)  
+        P_lr = np.matmul(P_lr, self.Yhat.T)
 
         P_pca = X.T
 
@@ -685,11 +685,11 @@ class PCovR:
     def fit(self, X, Y):
 
         if((self.space == 'feature' or X.shape[0] > X.shape[1])
-                and self.space != 'structure'):  
+                and self.space != 'structure'):
             if(X.shape[0] > X.shape[1] and self.space != 'feature'):
                 print("# samples > # features, computing in feature space")
             self.fit_feature_space(X, Y)
-        elif(self.space == 'structure' or X.shape[0] <= X.shape[1]):  
+        elif(self.space == 'structure' or X.shape[0] <= X.shape[1]):
             if(X.shape[0] <= X.shape[1] and self.space != 'structure'):
                 print("# samples < # features, computing in structure space")
             self.fit_structure_space(X, Y)
