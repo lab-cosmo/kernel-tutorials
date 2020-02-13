@@ -1,9 +1,11 @@
 import numpy as np
 from scipy.sparse.linalg import svds as svd
+
 from .general import sorted_eig
+from tqdm import tqdm_notebook as tqdm
 
 def approx_A(A, col_idx, row_idx=None):
-    """ Approximates the full matrix with selected features """  
+    """ Approximates the full matrix with selected features """
 
     A_c = A[:, col_idx]
     S_c = np.linalg.pinv(A_c)
@@ -51,8 +53,8 @@ def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
 
 
 def svd_select(A, n, k=1, idxs=None, **kwargs):
-    """ 
-        Selection function which computes the CUR 
+    """
+        Selection function which computes the CUR
         indices using the SVD Decomposition
     """
 
@@ -62,7 +64,7 @@ def svd_select(A, n, k=1, idxs=None, **kwargs):
     Acopy = A.copy()
 
     for nn in range(n):
-        if(nn >= len(idxs)):  
+        if(nn >= len(idxs)):
             (S, v, D) = svd(Acopy, k)
             pi = (D[:k]**2.0).sum(axis=0)
             pi[idxs] = 0  # eliminate possibility of selecting same column twice
@@ -80,8 +82,8 @@ def svd_select(A, n, k=1, idxs=None, **kwargs):
 
 def pcovr_select(A, n, Y, alpha, k=1, idxs=None, **kwargs):
     """
-        Selection function which computes the CUR 
-        indices using the PCovR `Covariance` matrix 
+        Selection function which computes the CUR
+        indices using the PCovR `Covariance` matrix
     """
 
     Acopy = A.copy()
@@ -90,8 +92,8 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, **kwargs):
     if(idxs is None):
         idxs = []  # indexA is initially empty.
 
-    for nn in range(n):
-        if(nn >= len(idxs)):  
+    for nn in tqdm(range(n)):
+        if(nn >= len(idxs)):
             try:
                 Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
             except:
@@ -104,18 +106,18 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, **kwargs):
             j = pi.argmax()
             idxs.append(j)
 
+        update(Ycopy, Acopy[:, idxs])
         v = Acopy[:, idxs[nn]] / \
             np.sqrt(np.matmul(Acopy[:, idxs[nn]], Acopy[:, idxs[nn]]))
 
         for i in range(Acopy.shape[1]):
             Acopy[:, i] -= v * np.dot(v, Acopy[:, i])
-        update(Ycopy, Acopy[:, idxs])
 
     return list(idxs)
 
 def update(Y_copy, X_c):
     """
-       Updates property matrix from selected columns 
+       Updates property matrix from selected columns
     """
     v = np.linalg.pinv(np.matmul(X_c.T, X_c))
     v = np.matmul(X_c, v)
@@ -129,12 +131,12 @@ selections = dict(svd=svd_select, pcovr=pcovr_select)
 
 class CUR:
     """
-        Performs CUR Decomposition on a Supplied Matrix 
+        Performs CUR Decomposition on a Supplied Matrix
 
         ---Arguments---
         matrix: matrix to be decomposed
-        precompute: (int, tuple, Nonetype) number of columns, rows to be computed 
-                    upon instantiation. Defaults to None. 
+        precompute: (int, tuple, Nonetype) number of columns, rows to be computed
+                    upon instantiation. Defaults to None.
         feature_select: (bool) whether to compute only column indices
         pi_function: (<func>) Importance metric and selection for the matrix
 	symmetry_tolerance: (float) Tolerance by which a matrix is symmetric
@@ -142,8 +144,8 @@ class CUR:
                 pi function
 
         ---References---
-        1.  G.  Imbalzano,  A.  Anelli,  D.  Giofre,  S.  Klees,  J.  Behler,   
-            and M. Ceriotti, J. Chem. Phys.148, 241730 (2018) 
+        1.  G.  Imbalzano,  A.  Anelli,  D.  Giofre,  S.  Klees,  J.  Behler,
+            and M. Ceriotti, J. Chem. Phys.148, 241730 (2018)
     """
     def __init__(self, matrix,
                  precompute=None,
@@ -189,7 +191,7 @@ class CUR:
 
     def compute(self, n_c, n_r=None):
         """
-           Compute the n_c selected columns and n_r selected rows 
+           Compute the n_c selected columns and n_r selected rows
         """
         if(self.fs):
             n_r = self.A.shape[1]
@@ -224,7 +226,7 @@ class CUR:
 
     def compute_P(self, n_c):
         """
-           Computes the projector into latent-space for ML models 
+           Computes the projector into latent-space for ML models
         """
 
         A_c, S, A_r = self.compute(n_c)
@@ -232,7 +234,7 @@ class CUR:
 
     def loss(self, n_c, n_r=None):
         """
-            Error between approximated matrix and target 
+            Error between approximated matrix and target
         """
         A_c, S, A_r = self.compute(n_c, n_r)
         return np.linalg.norm(self.A - np.matmul(A_c, np.matmul(S, A_r)))/np.linalg.norm(self.A)
