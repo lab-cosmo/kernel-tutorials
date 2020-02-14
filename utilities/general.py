@@ -199,7 +199,7 @@ def calculate_variables(X, Y, indices, n_atoms, N=10, n_FPS=200, kernel_func=gau
 
         X = center_matrix(X, center=X_center)
 
-        X_scale = np.linalg.norm(X_train-X_center) / np.sqrt(n_train)
+        X_scale = np.linalg.norm(X_train) / np.sqrt(n_train)
         X = normalize_matrix(X, scale=X_scale)
 
         X_split = X.copy()
