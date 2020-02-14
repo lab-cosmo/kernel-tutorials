@@ -40,14 +40,17 @@ def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
     v_C = v_C[v_C>regularization]
 
     Csqrt = np.matmul(np.matmul(U_C, np.diag(np.sqrt(v_C))), U_C.T)
-    Cinv = np.matmul(np.matmul(U_C, np.diag(1.0/(v_C))), U_C.T)
+    Cinv = np.linalg.pinv(cov, rcond=regularization)
+    Y_hat = np.matmul(X.T, Y)
+    Y_hat = np.matmul(Cinv, Y_hat)
 
-    C_lr = np.matmul(Cinv, np.matmul(X.T,Y))
-    C_lr = np.matmul(Csqrt, C_lr)
+    if(len(Y_hat.shape)<2):
+        Y_hat = Y_hat.reshape((-1,1))
+
+    C_lr = np.matmul(Csqrt, Y_hat)
     C_lr = np.matmul(C_lr, C_lr.T)
 
     C_pca = cov
-
     C =  alpha*C_pca +  (1.0-alpha)*C_lr
 
     return C
@@ -60,7 +63,6 @@ def svd_select(A, n, k=1, idxs=None, sps=False, **kwargs):
     """
 
     idxs = []  # indexA is initially empty.
-    print(sps)
     Acopy = A.copy()
 
     for nn in range(n):
@@ -68,6 +70,7 @@ def svd_select(A, n, k=1, idxs=None, sps=False, **kwargs):
             (S, v, D) = np.linalg.svd(Acopy)
         else:
             (S, v, D) = svd(Acopy, k)
+            D = D[np.flip(np.argsort(v))]
         pi = (D[:k]**2.0).sum(axis=0)
         pi[idxs] = 0  # eliminate possibility of selecting same column twice
         i = pi.argmax()
@@ -92,7 +95,6 @@ def pcovr_select(A, n, Y, alpha, k=1, sps=False, **kwargs):
     Ycopy = Y.copy()
 
     idxs = []  # indexA is initially empty.
-    print(sps)
 
     for nn in tqdm(range(n)):
         try:
@@ -104,8 +106,7 @@ def pcovr_select(A, n, Y, alpha, k=1, sps=False, **kwargs):
             v_Ct, U_Ct = sorted_eig(Ct, n=k)
         else:
             v_Ct, U_Ct = speig(Ct, k)
-            v_Ct = np.flip(v_Ct, axis=0)
-            U_Ct = np.flip(U_Ct, axis=1)
+            U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
 
         pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
         pi[idxs] = 0  # eliminate possibility of selecting same column twice
@@ -125,16 +126,6 @@ def pcovr_select(A, n, Y, alpha, k=1, sps=False, **kwargs):
             Acopy[:, i] -= v * np.dot(v, Acopy[:, i])
 
     return list(idxs)
-
-def update(Y_copy, X_c):
-    """
-       Updates property matrix from selected columns
-    """
-    v = np.linalg.pinv(np.matmul(X_c.T, X_c))
-    v = np.matmul(X_c, v)
-    v = np.matmul(v, X_c.T)
-
-    Y_copy -= np.matmul(v, Y_copy)
 
 
 # Dictionary of Selection Functions
