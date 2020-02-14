@@ -40,7 +40,7 @@ def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
     v_C = v_C[v_C>regularization]
 
     Csqrt = np.matmul(np.matmul(U_C, np.diag(np.sqrt(v_C))), U_C.T)
-    Cinv = np.linalg.pinv(cov)
+    Cinv = np.linalg.pinv(cov, rcond=regularization)
     Y_hat = np.matmul(X.T, Y)
     Y_hat = np.matmul(Cinv, Y_hat)
 
@@ -63,7 +63,6 @@ def svd_select(A, n, k=1, idxs=None, sps=False, **kwargs):
     """
 
     idxs = []  # indexA is initially empty.
-    print(sps)
     Acopy = A.copy()
 
     for nn in range(n):
@@ -96,7 +95,6 @@ def pcovr_select(A, n, Y, alpha, k=1, sps=False, **kwargs):
     Ycopy = Y.copy()
 
     idxs = []  # indexA is initially empty.
-    print(sps)
 
     for nn in tqdm(range(n)):
         try:
