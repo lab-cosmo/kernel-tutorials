@@ -98,7 +98,7 @@ class LR:
     """
 
     def __init__(self, regularization=1e-12):
-        self.W = None
+        self.PXY = None
         self.regularization = regularization
 
     def fit(self, X, Y):
@@ -116,8 +116,8 @@ class LR:
         XTX = np.linalg.pinv(XTX)
 
         # Compute LR solution
-        self.W = np.matmul(XTX, X.T)
-        self.W = np.matmul(self.W, Y)
+        self.PXY = np.matmul(XTX, X.T)
+        self.PXY = np.matmul(self.PXY, Y)
 
     def transform(self, X):
         """
@@ -128,7 +128,7 @@ class LR:
         """
 
         # Compute predicted Y
-        Yp = np.matmul(X, self.W)
+        Yp = np.matmul(X, self.PXY)
 
         return Yp
 
@@ -255,7 +255,7 @@ class KRR:
     def __init__(self, regularization=1.0E-16, kernel_type="linear"):
 
         self.regularization = regularization
-        self.W = None
+        self.PKY = None
         self.X = None
 
         if(isinstance(kernel_type, str)):
@@ -284,10 +284,10 @@ class KRR:
         Kreg = K + np.eye(K.shape[0])*maxeig*self.regularization
 
         # Solve the model
-        self.W = np.linalg.solve(Kreg, Y)
+        self.PKY = np.linalg.solve(Kreg, Y)
 
     def transform(self, X=None, K=None):
-        if self.W is None:
+        if self.PKY is None:
             print("Error: must fit the KPCA before transforming")
         elif X is None and K is None:
             print("Either the kernel or input data must be specified.")
@@ -298,7 +298,7 @@ class KRR:
                 K = self.kernel(X, self.X)
                 K = center_kernel(K, reference=self.K)
 
-            Yp = np.matmul(K, self.W)
+            Yp = np.matmul(K, self.PKY)
 
             return Yp
 
@@ -376,10 +376,10 @@ class SparseKPCA:
         self.v_C, self.U_C = sorted_eig(
             C, thresh=self.regularization, n=self.n_active)
 
-        self.PKT = np.matmul(self.U_active, self.U_C)
+        self.PKT = np.matmul(self.U_active, self.U_C[:, :self.n_KPCA])
         self.T = np.matmul(Knm-self.barKM, self.PKT)
         self.PTX = np.matmul(np.diagflat(
-            eig_inv(self.v_C[:self.n_active-1])), np.matmul(self.T.T, X))
+            eig_inv(self.v_C[:self.n_KPCA])), np.matmul(self.T.T, X))
 
     def transform(self, X, Knm=None):
         if self.PKT is None:
@@ -466,18 +466,18 @@ class SparseKRR:
             Knm = center_kernel(Knm, Kmm)
 
         # Compute max eigenvalue of regularized model
-        W = np.linalg.pinv(np.matmul(Knm.T, Knm) + self.regularization*Kmm)
-        W = np.matmul(W, Knm.T)
-        self.W = np.matmul(W, Y)
+        PKY = np.linalg.pinv(np.matmul(Knm.T, Knm) + self.regularization*Kmm)
+        PKY = np.matmul(PKY, Knm.T)
+        self.PKY = np.matmul(PKY, Y)
 
     def transform(self, X, Knm=None):
-        if self.W is None:
+        if self.PKY is None:
             print("Error: must fit the KRR model before transforming")
         else:
             if(Knm is None):
                 Knm = self.kernel(X, self.X_sparse)
 
-            Yp = np.matmul(Knm, self.W)
+            Yp = np.matmul(Knm, self.PKY)
 
             return Yp
 
@@ -523,11 +523,11 @@ class MDS:
             Fits the PCA
 
             ---Arguments---
-            X: centered data on which to build the MDS
+            X: centered and normalized data on which to build the MDS
         """
 
         # Compute covariance
-        self.K = np.matmul(X, X.T)  # /(X.shape[0] - 1)
+        self.K = np.matmul(X, X.T)
 
         # Compute eigendecomposition of covariance matrix
         v, U = sorted_eig(self.K, thresh=self.regularization, n=self.n_MDS)
@@ -567,8 +567,8 @@ class PCovR:
         Feature Space
 
         ---Arguments---
-        X: independent (predictor) variable
-        Y: dependent (response) variable
+        X: independent (predictor) variable, centered and normalized
+        Y: dependent (response) variable, centered and normalized
         alpha: tuning parameter
         n_PCA: number of principal components to retain
         loss: compute individual PCA and linear regression loss terms
@@ -608,10 +608,14 @@ class PCovR:
         # Compute K
         lr = LR(regularization=self.regularization)
         lr.fit(X, Y)
-        self.Yhat = lr.transform(X).reshape((-1, Y.shape[-1]))
 
-        K_pca = np.matmul(X, X.T)  # /np.linalg.norm(X)**2
-        K_lr = np.matmul(self.Yhat, self.Yhat.T)  # /np.linalg.norm(Y)**2
+        self.Yhat = lr.transform(X)
+
+        if(len(Y.shape)==1):
+            self.Yhat = self.Yhat.reshape(-1, 1)
+
+        K_pca = np.matmul(X, X.T)
+        K_lr = np.matmul(self.Yhat, self.Yhat.T)
 
         self.K = (self.alpha*K_pca) + (1.0-self.alpha)*K_lr
 
@@ -660,8 +664,12 @@ class PCovR:
         P_lr = np.matmul(X.T, X) + np.eye(X.shape[1])*self.regularization
         P_lr = np.linalg.pinv(P_lr)
         P_lr = np.matmul(P_lr, X.T)
-        P_lr = np.matmul(P_lr, Y).reshape((-1, Y.shape[-1]))
-        P_lr = np.matmul(P_lr, self.Yhat.T)  # /np.linalg.norm(Y)**2
+        P_lr = np.matmul(P_lr, Y)
+
+        if(len(Y.shape)==1):
+            P_lr = P_lr.reshape((-1,1))
+
+        P_lr = np.matmul(P_lr, self.Yhat.T)
 
         P_pca = X.T
 
@@ -677,11 +685,11 @@ class PCovR:
     def fit(self, X, Y):
 
         if((self.space == 'feature' or X.shape[0] > X.shape[1])
-                and self.space != 'structure'):  #
+                and self.space != 'structure'):
             if(X.shape[0] > X.shape[1] and self.space != 'feature'):
                 print("# samples > # features, computing in feature space")
             self.fit_feature_space(X, Y)
-        elif(self.space == 'structure' or X.shape[0] <= X.shape[1]):  #
+        elif(self.space == 'structure' or X.shape[0] <= X.shape[1]):
             if(X.shape[0] <= X.shape[1] and self.space != 'structure'):
                 print("# samples < # features, computing in structure space")
             self.fit_structure_space(X, Y)
