@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 from IPython.display import display, Markdown
 import os
 
-utils_dir=os.path.dirname(os.path.realpath(__file__))
+utils_dir = os.path.dirname(os.path.realpath(__file__))
 plt.style.use('{}/kernel_pcovr.mplstyle'.format(utils_dir))
 
-def plot_base(scatter_points, fig, ax, title,
-              x_label, y_label, cbar_title="", **kwargs):
+
+def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar_title="", **kwargs):
     """
         Base class for all plotting utilities
         Author: Rose K. Cersonsky
@@ -42,8 +42,7 @@ def plot_base(scatter_points, fig, ax, title,
     return fig, ax
 
 
-def plot_simple(X, fig=None, ax=None, title=None,
-                labels=[r"$X_1$", r"$X_2$"], **kwargs):
+def plot_simple(X, fig=None, ax=None, title=None, labels=[r"$X_1$", r"$X_2$"], **kwargs):
     """
         Create simple plot of 2+ dimensional data
         Author: Rose K. Cersonsky
@@ -73,8 +72,7 @@ def plot_simple(X, fig=None, ax=None, title=None,
     return ax
 
 
-def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0,
-                    **kwargs):
+def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs):
     """
         Create a plot of a latent-space projection of data
         Author: Rose K. Cersonsky
@@ -88,16 +86,19 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0,
                     for non-typical plots
     """
 
-    kwargs['cmap'] = kwargs['cmapX']
-    kwargs.pop('cmapY')
-    kwargs.pop('cmapX')
+    kwargs['cmap'] = kwargs.get('cmapX', "Greys")
+
+    if('cmapY' in kwargs):
+        kwargs.pop('cmapY')
+    if('cmapX' in kwargs):
+        kwargs.pop('cmapX')
 
     if('color' not in kwargs):
         if len(Y.shape) != 1:
             print("Only using first column of Y")
             Y = Y[:, 0]
 
-        kwargs['c'] = Y*Y_scale + Y_center
+        kwargs['c'] = Y * Y_scale + Y_center
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "CS")
     kwargs['x_label'] = kwargs.get('x_label', r'$PC_1$')
@@ -126,12 +127,15 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
         Y = Y[:, 0]
         Yp = Yp[:, 0]
 
-    kwargs['cmap'] = kwargs['cmapY']
-    kwargs.pop('cmapY')
-    kwargs.pop('cmapX')
+    kwargs['cmap'] = kwargs.get('cmapY', 'viridis')
+
+    if('cmapY' in kwargs):
+        kwargs.pop('cmapY')
+    if('cmapX' in kwargs):
+        kwargs.pop('cmapX')
 
     if('color' not in kwargs):
-        kwargs['c'] = Y_scale*np.abs(Y-Yp)
+        kwargs['c'] = Y_scale * np.abs(Y - Yp)
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "Loss")
     kwargs['x_label'] = kwargs.get('x_label', r'$Y$')
