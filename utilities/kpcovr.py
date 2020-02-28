@@ -34,7 +34,7 @@ def gaussian_kernel(XA, XB, gamma=1.0):
     """
 
     D = cdist(XA, XB, metric='sqeuclidean')
-    return np.exp(-D*gamma)
+    return np.exp(- D * gamma)
 
 
 def center_kernel(K, reference=None):
@@ -65,8 +65,8 @@ def center_kernel(K, reference=None):
     if K_ref.shape[0] != K_ref.shape[1]:
         raise ValueError(
             "The reference kernel is not square, and does not define a RKHS")
-    oneMN = np.ones((K.shape[0], K.shape[1]))/K.shape[1]
-    oneNN = np.ones((K.shape[1], K.shape[1]))/K.shape[1]
+    oneMN = np.ones((K.shape[0], K.shape[1])) / K.shape[1]
+    oneNN = np.ones((K.shape[1], K.shape[1])) / K.shape[1]
     Kc = K - np.matmul(oneMN, K_ref) - np.matmul(K, oneNN) + \
         np.matmul(np.matmul(oneMN, K_ref), oneNN)
 
@@ -193,21 +193,21 @@ class KPCovR:
         if(len(Y.shape) == 1):
             Yhat = Yhat.reshape(-1, 1)
 
-        K_pca = K/(np.trace(K)/X.shape[0])
+        K_pca = K / (np.trace(K) / X.shape[0])
         K_lr = np.matmul(Yhat, Yhat.T)
 
-        Kt = (self.alpha*K_pca) + (1.0-self.alpha)*K_lr
+        Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
         self.Kt = Kt
 
         self.v, self.U = sorted_eig(
             Kt, thresh=self.regularization, n=self.n_PCA)
 
-        P_krr = np.linalg.solve(K+np.eye(len(K))*self.regularization, Yhat)
+        P_krr = np.linalg.solve(K + np.eye(len(K)) * self.regularization, Yhat)
         P_krr = np.matmul(P_krr, Yhat.T)
 
-        P_kpca = np.eye(K.shape[0])/(np.trace(K)/K.shape[0])
+        P_kpca = np.eye(K.shape[0]) / (np.trace(K) / K.shape[0])
 
-        P = (self.alpha*P_kpca) + (1.0-self.alpha)*P_krr
+        P = (self.alpha * P_kpca) + (1.0 - self.alpha) * P_krr
 
         v_inv = np.diagflat(eig_inv(self.v[:self.n_PCA]))
 
@@ -221,10 +221,6 @@ class KPCovR:
         self.PTK = np.matmul(PT, K)
         self.PTY = np.matmul(PT, Y)
         self.PTX = np.matmul(PT, X)
-        #
-        # self.PTK = np.matmul(v_inv, np.matmul(self.T.T, K))
-        # self.PTX = np.matmul(v_inv, np.matmul(self.T.T, X))
-        # self.PTY = np.matmul(v_inv, np.matmul(self.T.T, Y))
 
     def transform(self, X=None, K=None):
         """
