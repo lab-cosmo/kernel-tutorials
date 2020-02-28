@@ -62,19 +62,23 @@ def svd_select(A, n, k=1, idxs=None, sps=False, **kwargs):
         indices using the SVD Decomposition
     """
 
-    idxs = []  # indexA is initially empty.
+    if(idxs is None):
+        idxs = []  # indexA is initially empty.
+    else:
+        idxs = list(idxs)
     Acopy = A.copy()
 
     for nn in range(n):
-        if(not sps):
-            (S, v, D) = np.linalg.svd(Acopy)
-        else:
-            (S, v, D) = svd(Acopy, k)
-            D = D[np.flip(np.argsort(v))]
-        pi = (D[:k]**2.0).sum(axis=0)
-        pi[idxs] = 0  # eliminate possibility of selecting same column twice
-        i = pi.argmax()
-        idxs.append(i)
+        if(len(idxs)<=n):
+            if(not sps):
+                (S, v, D) = np.linalg.svd(Acopy)
+            else:
+                (S, v, D) = svd(Acopy, k)
+                D = D[np.flip(np.argsort(v))]
+            pi = (D[:k]**2.0).sum(axis=0)
+            pi[idxs] = 0  # eliminate possibility of selecting same column twice
+            i = pi.argmax()
+            idxs.append(i)
 
         v = Acopy[:, idxs[nn]] / \
             np.sqrt(np.matmul(Acopy[:, idxs[nn]], Acopy[:, idxs[nn]]))
@@ -85,7 +89,7 @@ def svd_select(A, n, k=1, idxs=None, sps=False, **kwargs):
     return list(idxs)
 
 
-def pcovr_select(A, n, Y, alpha, k=1, sps=False, **kwargs):
+def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
     """
         Selection function which computes the CUR
         indices using the PCovR `Covariance` matrix
@@ -94,28 +98,34 @@ def pcovr_select(A, n, Y, alpha, k=1, sps=False, **kwargs):
     Acopy = A.copy()
     Ycopy = Y.copy()
 
-    idxs = []  # indexA is initially empty.
+    if(idxs is None):
+        idxs = []  # indexA is initially empty.
+    else:
+        idxs = list(idxs)
 
     for nn in tqdm(range(n)):
-        try:
-            Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
-        except:
-            print("Only {} features possible".format(nn))
-            return list(idxs)
-        if(not sps):
-            v_Ct, U_Ct = sorted_eig(Ct, n=k)
-        else:
-            v_Ct, U_Ct = speig(Ct, k)
-            U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
+        if(len(idxs)<=nn):
+            try:
+                Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
+            except:
+                print("Only {} features possible".format(nn))
+                return list(idxs)
+            if(not sps):
+                v_Ct, U_Ct = sorted_eig(Ct, n=k)
+            else:
+                v_Ct, U_Ct = speig(Ct, k)
+                U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
 
-        pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
-        pi[idxs] = 0  # eliminate possibility of selecting same column twice
-        j = pi.argmax()
-        idxs.append(j)
+            pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
+            pi[idxs] = 0  # eliminate possibility of selecting same column twice
+            j = pi.argmax()
+            idxs.append(j)
+        # else:
+        #     print(nn, idxs[nn])
 
-        v = np.linalg.pinv(np.matmul(Acopy[:, idxs].T, Acopy[:, idxs]))
-        v = np.matmul(Acopy[:, idxs], v)
-        v = np.matmul(v, Acopy[:, idxs].T)
+        v = np.linalg.pinv(np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
+        v = np.matmul(Acopy[:, idxs[:nn+1]], v)
+        v = np.matmul(v, Acopy[:, idxs[:nn+1]].T)
 
         Ycopy -= np.matmul(v, Ycopy)
 
