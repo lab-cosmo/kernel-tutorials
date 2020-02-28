@@ -74,12 +74,18 @@ def quick_inverse(mat):
     return np.matmul(np.matmul(U_mat, np.diagflat(eig_inv(v_mat))), U_mat.T)
 
 
-def sorted_eig(mat, thresh=0.0, n=None):
+def sorted_eig(mat, thresh=0.0, n=None, sps=True):
     """
         Returns n eigenvalues and vectors sorted
         from largest to smallest eigenvalue
     """
-    val, vec = np.linalg.eigh(mat)
+    if(sps):
+        from scipy.sparse.linalg import eigs as speig
+        if(n is None):
+            n = mat.shape[0]-1
+        val, vec = speig(mat, k=n, tol=thresh)
+    else:
+        val, vec = np.linalg.eigh(mat)
     val = np.flip(val, axis=0)
     vec = np.flip(vec, axis=1)
 
