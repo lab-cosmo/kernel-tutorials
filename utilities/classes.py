@@ -13,21 +13,21 @@ class PCA:
     """
         Performs principal component analysis
 
-        ---Attributes---
+       ---Attributes---
         n_PCA: number of PCA components to retain
             (`None` retains all components)
         C: covariance matrix of the data
         self.U: eigenvalues of the covariance matrix
         V: eigenvectors of the covariance matrix
 
-        ---Methods---
+       ---Methods---
         fit: fit the PCA
         transform: transform data based on the PCA fit
 
-        ---References---
-        1.  https://en.wikipedia.org/wiki/Principal_component_analysis
+       ---References---
+        1.  https: /  / en.wikipedia.org / wiki / Principal_component_analysis
         2.  M. E. Tipping 'Sparse Kernel Principal Component Analysis',
-            Advances in Neural Information Processing Systems 13, 633-639, 2001
+            Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
     def __init__(self, n_PCA=None, regularization=1e-12):
@@ -44,12 +44,12 @@ class PCA:
         """
             Fits the PCA
 
-            ---Arguments---
+           ---Arguments---
             X: centered data on which to build the PCA
         """
 
         # Compute covariance
-        self.C = np.matmul(X.T, X)/(X.shape[0] - 1)
+        self.C = np.matmul(X.T, X) / (X.shape[0] - 1)
 
         # Compute eigendecomposition of covariance matrix
         v, U = sorted_eig(self.C, thresh=self.regularization, n=self.n_PCA)
@@ -61,7 +61,7 @@ class PCA:
         """
             Transforms the PCA
 
-            ---Arguments---
+           ---Arguments---
             X: centered data to transform based on the PCA
         """
 
@@ -83,18 +83,18 @@ class LR:
     """
         Performs linear regression
 
-        ---Attributes---
+       ---Attributes---
         w: regression weights
 
-        ---Methods---
+       ---Methods---
         fit: fit the linear regression model by computing regression weights
         transform: compute predicted Y values
 
-        ---References---
+       ---References---
         1.  S. de Jong, H. A. L. Kiers, 'Principal Covariates
             Regression: Part I. Theory', Chemometrics and Intelligents
             Laboratory Systems 14(1): 155-164, 1992
-        2.  https://en.wikipedia.org/wiki/Linear_regression#Simple_and_multiple_linear_regression
+        2.  https://en.wikipedia.org/wiki/Linear_regression
     """
 
     def __init__(self, regularization=1e-12):
@@ -105,14 +105,14 @@ class LR:
         """
             Fits the linear regression model
 
-            ---Arguments---
+           ---Arguments---
             X: centered, independent (predictor) variable
             Y: centered, dependent (response) variable
         """
 
         # Compute inverse of covariance
         XTX = np.matmul(X.T, X)
-        XTX = XTX + self.regularization*np.eye(X.shape[1])
+        XTX = XTX + self.regularization * np.eye(X.shape[1])
         XTX = np.linalg.pinv(XTX)
 
         # Compute LR solution
@@ -123,7 +123,7 @@ class LR:
         """
             Computes predicted Y values
 
-            ---Arguments---
+           ---Arguments---
             X: centered, independent (predictor) variable
         """
 
@@ -142,17 +142,17 @@ class KPCA:
         Performs kernel principal component analysis on a dataset
         based on a kernel between all of the constituent data points
 
-        ---Arguments---
+       ---Arguments---
         K: kernel matrix
         n_KPCA: number of principal components to retain in the decomposition
 
-        ---Returns---
+       ---Returns---
         T: KPCA scores
 
-        ---References---
-        1.  https://en.wikipedia.org/wiki/Kernel_principal_component_analysis
+       ---References---
+        1.  https: /  / en.wikipedia.org / wiki / Kernel_principal_component_analysis
         2.  M. E. Tipping, 'Sparse Kernel Principal Component Analysis',
-            Advances in Neural Information Processing Systems 13, 633-639, 2001
+            Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
     def __init__(self, n_KPCA, regularization=1e-12, kernel_type="linear"):
@@ -178,8 +178,7 @@ class KPCA:
             self.X = X
         else:
             print("No input data supplied during fitting. \
-                   \nTransformations and statistics only " +
-                  "available with pre-computed kernels.")
+                   \nTransformations/statistics only available for kernel inputs.")
 
         # Compute eigendecomposition of kernel
         self.v, self.U = sorted_eig(
@@ -237,17 +236,17 @@ class KRR:
     """
         Performs kernel ridge regression
 
-        ---Arguments---
+       ---Arguments---
         K: kernel matrix
         Y: property values
         regularization: regularization factor to ensure positive definiteness
 
-        ---Returns---
+       ---Returns---
         w: regression weights
 
-        ---References---
+       ---References---
         1.  M. Ceriotti, M. J. Willatt, G. Csanyi,
-            'Machine Learning of Atomic-Scale Properties
+            'Machine Learning of Atomic - Scale Properties
             Based on Physical Principles', Handbook of Materials Modeling,
             Springer, 2018
     """
@@ -274,14 +273,13 @@ class KRR:
             self.X = X
         else:
             print("No input data supplied during fitting. \
-                   \nTransformations and statistics only " +
-                  "available with pre-computed kernels.")
+                   \nTransformations/statistics only available for kernel inputs.")
 
         # Compute maximum eigenvalue of kernel matrix
         maxeig = np.amax(np.linalg.eigvalsh(K))
 
         # Regularize the model
-        Kreg = K + np.eye(K.shape[0])*maxeig*self.regularization
+        Kreg = K + np.eye(K.shape[0]) * maxeig * self.regularization
 
         # Solve the model
         self.PKY = np.linalg.solve(Kreg, Y)
@@ -315,17 +313,17 @@ class SparseKPCA:
         based on a kernel between furthest point sampling of the constituent
         data points
 
-        ---Arguments---
+       ---Arguments---
         K: kernel matrix
         n_KPCA: number of principal components to retain in the decomposition
 
-        ---Returns---
+       ---Returns---
         T: KPCA scores
 
-        ---References---
-        1.  https://en.wikipedia.org/wiki/Kernel_principal_component_analysis
+       ---References---
+        1.  https: /  / en.wikipedia.org / wiki / Kernel_principal_component_analysis
         2.  M. E. Tipping, 'Sparse Kernel Principal Component Analysis',
-            Advances in Neural Information Processing Systems 13, 633-639, 2001
+            Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
     def __init__(self, n_KPCA, n_active=100, regularization=1e-12,
@@ -366,10 +364,11 @@ class SparseKPCA:
         self.vmm, self.Umm = sorted_eig(
             Kmm, thresh=self.regularization, n=self.n_active)
 
-        self.U_active = np.matmul(self.Umm[:, :self.n_active-1],
-                                  np.diagflat(np.sqrt(eig_inv(self.vmm[0:self.n_active-1]))))
+        U_active = self.Umm[:, :self.n_active - 1]
+        v_invsqrt = np.diagflat(np.sqrt(eig_inv(self.vmm[0:self.n_active - 1])))
+        self.U_active = np.matmul(U_active, v_invsqrt)
 
-        phi_active = np.matmul(Knm-self.barKM, self.U_active)
+        phi_active = np.matmul(Knm - self.barKM, self.U_active)
 
         C = np.dot(phi_active.T, phi_active)
 
@@ -377,7 +376,7 @@ class SparseKPCA:
             C, thresh=self.regularization, n=self.n_active)
 
         self.PKT = np.matmul(self.U_active, self.U_C[:, :self.n_KPCA])
-        self.T = np.matmul(Knm-self.barKM, self.PKT)
+        self.T = np.matmul(Knm - self.barKM, self.PKT)
         self.PTX = np.matmul(np.diagflat(
             eig_inv(self.v_C[:self.n_KPCA])), np.matmul(self.T.T, X))
 
@@ -389,7 +388,7 @@ class SparseKPCA:
                 Knm = self.kernel(X, self.X_sparse)
 
             # Compute KPCA transformation
-            T = np.matmul(Knm-self.barKM, self.PKT)
+            T = np.matmul(Knm - self.barKM, self.PKT)
 
             return T
 
@@ -413,25 +412,25 @@ class SparseKRR:
         Performs sparsified kernel ridge regression
 
         TODO: Put in terms of X, Y
-        ---Arguments---
+       ---Arguments---
         Knm: kernel between the whole dataset and the 'representative' data points
         Kmm: kernel between the 'representative' data points and themselves
         Y: property values
         sigma: regularization parameter
-        regularization: additional regularization scale based on the maximum eigenvalue
-            of sigma*Kmm + Knm.T x Knm
+        regularization: additional regularization scale based on
+                        the maximum eigenvalue of sigma * Kmm + Knm.T x Knm
 
-        ---Returns---
+       ---Returns---
         Yp: predicted property values
 
-        ---References---
+       ---References---
         1.  M. Ceriotti, M. J. Willatt, G. Csanyi,
-            'Machine Learning of Atomic-Scale Properties
+            'Machine Learning of Atomic - Scale Properties
             Based on Physical Principles', Handbook of Materials Modeling,
             Springer, 2018
         2.  A. J. Smola, B. Scholkopf, 'Sparse Greedy Matrix Approximation
             for Machine Learning', Proceedings of the 17th International
-            Conference on Machine Learning, 911-918, 2000
+            Conference on Machine Learning, 911 - 918, 2000
     """
 
     def __init__(self, regularization=1.0E-16,
@@ -466,7 +465,7 @@ class SparseKRR:
             Knm = center_kernel(Knm, Kmm)
 
         # Compute max eigenvalue of regularized model
-        PKY = np.linalg.pinv(np.matmul(Knm.T, Knm) + self.regularization*Kmm)
+        PKY = np.linalg.pinv(np.matmul(Knm.T, Knm) + self.regularization * Kmm)
         PKY = np.matmul(PKY, Knm.T)
         self.PKY = np.matmul(PKY, Y)
 
@@ -491,22 +490,22 @@ class MDS:
     """
         Performs multidimensional scaling
 
-        ---Attributes---
+       ---Attributes---
         n_MDS: number of PCA components to retain
             (`None` retains all components)
         K: inner product of the data, hereon kernel
         U: eigenvalues of the kernel matrix
         V: eigenvectors of the kernel matrix
 
-        ---Methods---
+       ---Methods---
         fit: fit the MDS
         transform: transform data based on the MDS fit
 
-        ---References---
-        1.  https://en.wikipedia.org/wiki/Multidimensional_scaling
+       ---References---
+        1.  https: /  / en.wikipedia.org / wiki / Multidimensional_scaling
         2.  Torgerson, W.S. 'Multidimensional scaling: I. Theory and method',
-            Psychometrika 17, 401-419, 1952
-            https://doi.org/10.1007/BF02288916
+            Psychometrika 17, 401 - 419, 1952
+            https: /  / doi.org / 10.1007 / BF02288916
     """
 
     def __init__(self, n_MDS=None, regularization=1e-12):
@@ -522,7 +521,7 @@ class MDS:
         """
             Fits the PCA
 
-            ---Arguments---
+           ---Arguments---
             X: centered and normalized data on which to build the MDS
         """
 
@@ -540,7 +539,7 @@ class MDS:
         """
             Transforms using MDS
 
-            ---Arguments---
+           ---Arguments---
             X: centered data to transform based on MDS
         """
 
@@ -556,8 +555,8 @@ class MDS:
         T = self.transform(X)
         Xr = np.matmul(T, self.PTX)
         stats = get_stats(x=X, t=T, xr=Xr)
-        stats['Strain'] = np.linalg.norm(
-            np.matmul(X, X.T) - np.matmul(T, T.T))**2.0/np.linalg.norm(np.matmul(X, X.T))
+        kernel_error = np.linalg.norm(np.matmul(X, X.T) - np.matmul(T, T.T)) ** 2.0
+        stats['Strain'] = kernel_error / np.linalg.norm(np.matmul(X, X.T))
         return stats
 
 
@@ -566,22 +565,22 @@ class PCovR:
         Performs PCovR, detecting whether the data set is in Structure or
         Feature Space
 
-        ---Arguments---
+       ---Arguments---
         X: independent (predictor) variable, centered and normalized
         Y: dependent (response) variable, centered and normalized
         alpha: tuning parameter
         n_PCA: number of principal components to retain
         loss: compute individual PCA and linear regression loss terms
 
-        ---Returns---
-        Xp: X values projected into the latent (PCA-like) space
+       ---Returns---
+        Xp: X values projected into the latent (PCA - like) space
         Xr: reconstructed X values from the PCA
         Yp: predicted Y values
         B: regression coefficients for predicting Y
         Lx: PCA loss
         Ly: linear regression loss
 
-        ---References---
+       ---References---
         1.  S. de Jong, H. A. L. Kiers, 'Principal Covariates
             Regression: Part I. Theory', Chemometrics and Intelligent
             Laboratory Systems 14(1): 155-164, 1992
@@ -603,25 +602,29 @@ class PCovR:
 
         self.space = space
 
-    def compute_K(self, X, Y):
+    def compute_K(self, X, Y, Yhat=None):
 
         # Compute K
-        lr = LR(regularization=self.regularization)
-        lr.fit(X, Y)
+        if(Yhat is None):
+            lr = LR(regularization=self.regularization)
+            lr.fit(X, Y)
 
-        self.Yhat = lr.transform(X)
+            self.Yhat = lr.transform(X)
 
-        if(len(Y.shape)==1):
+        else:
+            self.Yhat = Yhat
+
+        if(len(Y.shape) == 1):
             self.Yhat = self.Yhat.reshape(-1, 1)
 
         K_pca = np.matmul(X, X.T)
         K_lr = np.matmul(self.Yhat, self.Yhat.T)
 
-        self.K = (self.alpha*K_pca) + (1.0-self.alpha)*K_lr
+        self.K = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
 
-    def fit_feature_space(self, X, Y):
+    def fit_feature_space(self, X, Y, Yhat=None):
 
-        self.compute_K(X, Y)
+        self.compute_K(X, Y, Yhat=Yhat)
 
         # Compute the inverse square root of the covariance of X
         C = np.matmul(X.T, X)
@@ -651,9 +654,9 @@ class PCovR:
         PTY = np.matmul(PTY, iCsqrt)
         self.PTY = np.matmul(np.matmul(PTY, X.T), Y)
 
-    def fit_structure_space(self, X, Y):
+    def fit_structure_space(self, X, Y, Yhat=None):
 
-        self.compute_K(X, Y)
+        self.compute_K(X, Y, Yhat=Yhat)
         self.v, self.U = sorted_eig(
             self.K, thresh=self.regularization, n=self.n_PCA)
 
@@ -661,19 +664,19 @@ class PCovR:
         self.T = np.matmul(self.U[:, :self.n_PCA],
                            np.diagflat(np.sqrt(self.v[:self.n_PCA])))
 
-        P_lr = np.matmul(X.T, X) + np.eye(X.shape[1])*self.regularization
+        P_lr = np.matmul(X.T, X) + np.eye(X.shape[1]) * self.regularization
         P_lr = np.linalg.pinv(P_lr)
         P_lr = np.matmul(P_lr, X.T)
         P_lr = np.matmul(P_lr, Y)
 
-        if(len(Y.shape)==1):
-            P_lr = P_lr.reshape((-1,1))
+        if(len(Y.shape) == 1):
+            P_lr = P_lr.reshape((-1, 1))
 
         P_lr = np.matmul(P_lr, self.Yhat.T)
 
         P_pca = X.T
 
-        P = (self.alpha*P_pca) + (1.0-self.alpha)*P_lr
+        P = (self.alpha * P_pca) + (1.0 - self.alpha) * P_lr
         self.PXT = np.matmul(P, np.matmul(self.U[:, :self.n_PCA],
                                           np.diag(np.sqrt(v_inv))))
         self.PTY = np.matmul(np.diagflat(v_inv),
@@ -682,17 +685,17 @@ class PCovR:
         self.PTX = np.matmul(np.diagflat(v_inv),
                              np.matmul(self.T.T, X))
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, Yhat=None):
 
-        if((self.space == 'feature' or X.shape[0] > X.shape[1])
-                and self.space != 'structure'):
+        sample_heavy = X.shape[0] > X.shape[1]
+        if((self.space == 'feature' or sample_heavy) and self.space != 'structure'):
             if(X.shape[0] > X.shape[1] and self.space != 'feature'):
                 print("# samples > # features, computing in feature space")
-            self.fit_feature_space(X, Y)
-        elif(self.space == 'structure' or X.shape[0] <= X.shape[1]):
-            if(X.shape[0] <= X.shape[1] and self.space != 'structure'):
+            self.fit_feature_space(X, Y, Yhat=Yhat)
+        elif(self.space == 'structure' or not sample_heavy):
+            if(sample_heavy and self.space != 'structure'):
                 print("# samples < # features, computing in structure space")
-            self.fit_structure_space(X, Y)
+            self.fit_structure_space(X, Y, Yhat=Yhat)
         else:
             raise Exception('Space Error: \
                               Please specify either space = "structure",\
@@ -718,8 +721,8 @@ class PCovR:
     def loss(self, X, Y):
         T, Yp, Xr = self.transform(X)
 
-        Lpca = np.linalg.norm(X - Xr)**2/np.linalg.norm(X)**2
-        Llr = np.linalg.norm(Y - Yp)**2/np.linalg.norm(Y)**2
+        Lpca = np.linalg.norm(X - Xr) ** 2 / np.linalg.norm(X) ** 2
+        Llr = np.linalg.norm(Y - Yp) ** 2 / np.linalg.norm(Y) ** 2
 
         return Lpca, Llr
 

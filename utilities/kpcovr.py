@@ -153,7 +153,7 @@ class KPCovR:
                               or pass a suitable kernel function.\
                             '.format(kernels.keys()))
 
-    def fit(self, X, Y, K=None):
+    def fit(self, X, Y, K=None, Yhat=None):
         """
             Fits the KPCovR to the training inputs and outputs
 
@@ -184,11 +184,13 @@ class KPCovR:
 
         # Compute maximum eigenvalue of kernel matrix
 
-        krr = KRR(regularization=self.regularization, kernel_type=self.kernel)
-        krr.fit(X=X, Y=Y, K=K)
-        Yhat = krr.transform(X=X, K=K)
+        if(Yhat is None):
+            krr = KRR(regularization=self.regularization,
+                      kernel_type=self.kernel)
+            krr.fit(X=X, Y=Y, K=K)
+            Yhat = krr.transform(X=X, K=K)
 
-        if(len(Y.shape)==1):
+        if(len(Y.shape) == 1):
             Yhat = Yhat.reshape(-1, 1)
 
         K_pca = K/(np.trace(K)/X.shape[0])
@@ -211,10 +213,18 @@ class KPCovR:
 
         self.PKT = np.matmul(P, np.matmul(self.U[:, :self.n_PCA],
                                           np.sqrt(v_inv)))
-        self.T = np.matmul(K, self.PKT)
-        self.PTK = np.matmul(v_inv, np.matmul(self.T.T, K))
-        self.PTX = np.matmul(v_inv, np.matmul(self.T.T, X))
-        self.PTY = np.matmul(v_inv, np.matmul(self.T.T, Y))
+        T = np.matmul(K, self.PKT)
+
+        PT = np.matmul(T.T, T)
+        PT = np.linalg.pinv(PT)
+        PT = np.matmul(PT, T.T)
+        self.PTK = np.matmul(PT, K)
+        self.PTY = np.matmul(PT, Y)
+        self.PTX = np.matmul(PT, X)
+        #
+        # self.PTK = np.matmul(v_inv, np.matmul(self.T.T, K))
+        # self.PTX = np.matmul(v_inv, np.matmul(self.T.T, X))
+        # self.PTY = np.matmul(v_inv, np.matmul(self.T.T, Y))
 
     def transform(self, X=None, K=None):
         """
@@ -428,7 +438,7 @@ class SparseKPCovR:
         C_lr = np.matmul(iCsqrt, C_lr)
         C_lr = np.matmul(C_lr, phi_active.T)
 
-        if(len(Y.shape)==1):
+        if(len(Y.shape) == 1):
             C_lr = np.matmul(C_lr, Y.reshape(-1, 1))
         else:
             C_lr = np.matmul(C_lr, Y)
