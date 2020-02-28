@@ -52,10 +52,10 @@ def FPS(X, n=0, idx=None):
 
         # Get maximum distance and corresponding point
         fps_idxs[i] = np.argmax(d1)
-        d[i-1] = np.amax(d1)
+        d[i - 1] = np.amax(d1)
 
         # Compute distance from all points to the selected point
-        d2 = np.linalg.norm(X-X[fps_idxs[i]], axis=1)**2
+        d2 = np.linalg.norm(X - X[fps_idxs[i]], axis=1)**2
 
         # Set distances to minimum among the last two selected points
         d1 = np.minimum(d1, d2)
@@ -82,12 +82,19 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
     if(sps):
         from scipy.sparse.linalg import eigs as speig
         if(n is None):
-            n = mat.shape[0]-1
+            n = mat.shape[0] - 1
         val, vec = speig(mat, k=n, tol=thresh)
+        val = np.real(val)
+        vec = np.real(vec)
+
+        idx = sorted(range(len(val)), key=lambda i: -val[i])
+        val = val[idx]
+        vec = vec[:, idx]
+
     else:
         val, vec = np.linalg.eigh(mat)
-    val = np.flip(val, axis=0)
-    vec = np.flip(vec, axis=1)
+        val = np.flip(val, axis=0)
+        vec = np.flip(vec, axis=1)
 
     vec[:, val < thresh] = 0
     val[val < thresh] = 0
