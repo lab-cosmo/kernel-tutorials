@@ -30,7 +30,7 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar_title="", *
                    **kwargs
                    )
 
-    if('color' not in kwargs):
+    if('cmap' in kwargs):
         cbar = fig.colorbar(p, ax=ax, pad=0.05,
                             fraction=0.04, orientation='vertical')
         cbar.ax.set_ylabel(cbar_title, horizontalalignment='center')
@@ -95,10 +95,21 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
 
     if('color' not in kwargs):
         if len(Y.shape) != 1:
-            print("Only using first column of Y")
-            Y = Y[:, 0]
-
-        kwargs['c'] = Y * Y_scale + Y_center
+            if('cmap2D' in kwargs):
+                bounds = np.array([np.mean(Y, axis=0)-np.std(Y, axis=0),
+                                   np.mean(Y, axis=0)+np.std(Y, axis=0)]).T
+                colormap = kwargs['cmap2D'](*bounds)
+                kwargs['c'] = [colormap(*y) for y in Y]
+                kwargs.pop('cmap')
+                kwargs.pop('cmap2D')
+            else:
+                print("Only using first column of Y")
+                Y = Y[:, 0]
+                kwargs['c'] = Y * Y_scale + Y_center
+        else:
+            if('cmap2D' in kwargs):
+                kwargs.pop('cmap2D')
+            kwargs['c'] = Y * Y_scale + Y_center
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "CS")
     kwargs['x_label'] = kwargs.get('x_label', r'$PC_1$')
