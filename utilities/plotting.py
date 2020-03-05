@@ -86,7 +86,7 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
                     for non-typical plots
     """
 
-    kwargs['cmap'] = kwargs.get('cmapX', "Greys")
+    kwargs['cmap'] = kwargs.get('cmapX', "viridis")
 
     if('cmapY' in kwargs):
         kwargs.pop('cmapY')
@@ -138,7 +138,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
         Y = Y[:, 0]
         Yp = Yp[:, 0]
 
-    kwargs['cmap'] = kwargs.get('cmapY', 'viridis')
+    kwargs['cmap'] = kwargs.get('cmapY', 'Greys')
 
     if('cmapY' in kwargs):
         kwargs.pop('cmapY')
