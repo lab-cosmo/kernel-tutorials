@@ -2,8 +2,40 @@ import numpy as np
 from scipy.sparse.linalg import svds as svd
 from scipy.sparse.linalg import eigs as speig
 
-from .general import sorted_eig
-from tqdm import tqdm_notebook as tqdm
+from tqdm import tqdm as tqdm
+
+# if you want to universally disable tqdm,
+# you can uncomment the following line
+#
+# tqdm = lambda x: x
+
+def sorted_eig(mat, thresh=0.0, n=None, sps=True):
+    """
+        Returns n eigenvalues and vectors sorted
+        from largest to smallest eigenvalue
+    """
+    if(sps):
+        from scipy.sparse.linalg import eigs as speig
+        if(n is None):
+            n = mat.shape[0] - 1
+        val, vec = speig(mat, k=n, tol=thresh)
+        val = np.real(val)
+        vec = np.real(vec)
+
+        idx = sorted(range(len(val)), key=lambda i: -val[i])
+        val = val[idx]
+        vec = vec[:, idx]
+
+    else:
+        val, vec = np.linalg.eigh(mat)
+        val = np.flip(val, axis=0)
+        vec = np.flip(vec, axis=1)
+
+    vec[:, val < thresh] = 0
+    val[val < thresh] = 0
+
+    return val[:n], vec[:, :n]
+
 
 def approx_A(A, col_idx, row_idx=None):
     """ Approximates the full matrix with selected features """
@@ -21,6 +53,7 @@ def approx_A(A, col_idx, row_idx=None):
 
     return np.matmul(A_c, np.matmul(S, A_r))
 
+
 def compute_P(A_c, S, A_r, thresh=1e-12):
     """ Computes the latent-space projector for the feature matrix """
     SA = np.matmul(S, A_r)
@@ -31,27 +64,34 @@ def compute_P(A_c, S, A_r, thresh=1e-12):
 
     return np.matmul(U_SA, np.diagflat(np.sqrt(v_SA)))
 
+
 def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
-    """ Creates the PCovR modified covariance"""
+    """
+        Creates the PCovR modified covariance
+        ~C = (alpha) * X^T X +
+             (1-alpha) * (X^T X)^(-1/2) ~Y ~Y^T (X^T X)^(-1/2)
+
+        where ~Y is the properties obtained by linear regression.
+    """
 
     cov = np.matmul(X.T, X)
     v_C, U_C = sorted_eig(cov, thresh=regularization)
-    U_C = U_C[:,v_C>regularization]
-    v_C = v_C[v_C>regularization]
+    U_C = U_C[:, v_C > regularization]
+    v_C = v_C[v_C > regularization]
 
     Csqrt = np.matmul(np.matmul(U_C, np.diag(np.sqrt(v_C))), U_C.T)
     Cinv = np.linalg.pinv(cov, rcond=regularization)
     Y_hat = np.matmul(X.T, Y)
     Y_hat = np.matmul(Cinv, Y_hat)
 
-    if(len(Y_hat.shape)<2):
-        Y_hat = Y_hat.reshape((-1,1))
+    if(len(Y_hat.shape) < 2):
+        Y_hat = Y_hat.reshape((-1, 1))
 
     C_lr = np.matmul(Csqrt, Y_hat)
     C_lr = np.matmul(C_lr, C_lr.T)
 
     C_pca = cov
-    C =  alpha*C_pca +  (1.0-alpha)*C_lr
+    C = alpha*C_pca + (1.0-alpha)*C_lr
 
     return C
 
@@ -69,7 +109,7 @@ def svd_select(A, n, k=1, idxs=None, sps=False, **kwargs):
     Acopy = A.copy()
 
     for nn in range(n):
-        if(len(idxs)<=n):
+        if(len(idxs) <= n):
             if(not sps):
                 (S, v, D) = np.linalg.svd(Acopy)
             else:
@@ -104,7 +144,7 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
         idxs = list(idxs)
 
     for nn in tqdm(range(n)):
-        if(len(idxs)<=nn):
+        if(len(idxs) <= nn):
             try:
                 Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
             except:
@@ -123,7 +163,8 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
         # else:
         #     print(nn, idxs[nn])
 
-        v = np.linalg.pinv(np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
+        v = np.linalg.pinv(
+            np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
         v = np.matmul(Acopy[:, idxs[:nn+1]], v)
         v = np.matmul(v, Acopy[:, idxs[:nn+1]].T)
 
@@ -141,6 +182,7 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
 # Dictionary of Selection Functions
 selections = dict(svd=svd_select, pcovr=pcovr_select)
 
+
 class CUR:
     """
         Performs CUR Decomposition on a Supplied Matrix
@@ -151,7 +193,7 @@ class CUR:
                     upon instantiation. Defaults to None.
         feature_select: (bool) whether to compute only column indices
         pi_function: (<func>) Importance metric and selection for the matrix
-	symmetry_tolerance: (float) Tolerance by which a matrix is symmetric
+        symmetry_tolerance: (float) Tolerance by which a matrix is symmetric
         params: (dict) Dictionary of additional parameters to be passed to the
                 pi function
 
@@ -159,6 +201,7 @@ class CUR:
         1.  G.  Imbalzano,  A.  Anelli,  D.  Giofre,  S.  Klees,  J.  Behler,
             and M. Ceriotti, J. Chem. Phys.148, 241730 (2018)
     """
+
     def __init__(self, matrix,
                  precompute=None,
                  feature_select=False,
