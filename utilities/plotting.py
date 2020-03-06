@@ -105,8 +105,10 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
             else:
                 print("Only using first column of Y")
                 Y = Y[:, 0]
-                Y_scale = Y_scale[0]
-                Y_center = Y_center[0]
+                if isinstance(Y_scale, np.ndarray) or isinstance(Y_scale, list):
+                    Y_scale = Y_scale[0]
+                if isinstance(Y_center, np.ndarray) or isinstance(Y_center, list):
+                    Y_center = Y_center[0]
                 kwargs['c'] = Y * Y_scale + Y_center
         else:
             if('cmap2D' in kwargs):
@@ -139,8 +141,10 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
         print("Only plotting first column of Y")
         Y = Y[:, 0]
         Yp = Yp[:, 0]
-        Y_scale = Y_scale[0]
-        Y_center = Y_center[0]
+        if isinstance(Y_scale, np.ndarray) or isinstance(Y_scale, list):
+            Y_scale = Y_scale[0]
+        if isinstance(Y_center, np.ndarray) or isinstance(Y_center, list):
+            Y_center = Y_center[0]
 
     kwargs['cmap'] = kwargs.get('cmapY', 'Greys')
 
