@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display, Markdown
 import os
+import datetime
 
 utils_dir = os.path.dirname(os.path.realpath(__file__))
 plt.style.use('{}/kernel_pcovr.mplstyle'.format(utils_dir))
@@ -22,6 +23,8 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar_title="", *
         kwargs: arguments to pass to plt.scatter
 
     """
+
+    # print(kwargs)
     if(ax is None or fig is None):
         fig, ax = plt.subplots(1, figsize=plt.rcParams['figure.figsize'])
 
@@ -86,6 +89,7 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
                     for non-typical plots
     """
 
+    Y = Y.reshape(Y.shape[0], -1)
     kwargs['cmap'] = kwargs.get('cmapX', "viridis")
 
     if('cmapY' in kwargs):
@@ -94,24 +98,38 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
         kwargs.pop('cmapX')
 
     if('color' not in kwargs):
-        if len(Y.shape) != 1:
-            if('cmap2D' in kwargs):
-                bounds = np.array([np.mean(Y, axis=0)-np.std(Y, axis=0),
-                                   np.mean(Y, axis=0)+np.std(Y, axis=0)]).T
+        if Y.shape[-1] != 1:
+            if('cmap2D' in kwargs and 'colormap' not in kwargs):
+                if('vmin' not in kwargs or 'vmax' not in kwargs):
+                    bounds = np.array([np.mean(Y, axis=0)-np.std(Y, axis=0),
+                                       np.mean(Y, axis=0)+np.std(Y, axis=0)]).T
+                else:
+                    bounds = np.array([kwargs['vmin'], kwargs['vmax']]).T
+                    kwargs.pop('vmin'); kwargs.pop('vmax');
+
                 colormap = kwargs['cmap2D'](*bounds)
-                kwargs['c'] = [colormap(*y) for y in Y]
-                kwargs.pop('cmap')
-                kwargs.pop('cmap2D')
+                kwargs['c'] = [colormap(y) for y in Y]
+            elif('colormap' in kwargs):
+                kwargs['c'] = [kwargs['colormap'](y) for y in Y]
+                kwargs.pop('colormap')
             else:
-                print("Only using first column of Y")
                 Y = Y[:, 0]
-                Y_scale = Y_scale[0]
                 Y_center = Y_center[0]
                 kwargs['c'] = Y * Y_scale + Y_center
+            if('cmap' in kwargs):
+                kwargs.pop('cmap')
+            if('vmin' in kwargs):
+                kwargs.pop('vmin'); kwargs.pop('vmax')
         else:
             if('cmap2D' in kwargs):
                 kwargs.pop('cmap2D')
+            Y = Y[:, 0]
             kwargs['c'] = Y * Y_scale + Y_center
+
+        if('cmap2D' in kwargs):
+            kwargs.pop('cmap2D')
+        if('colormap' in kwargs):
+            kwargs.pop('colormap')
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "CS")
     kwargs['x_label'] = kwargs.get('x_label', r'$PC_1$')
@@ -139,7 +157,6 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
         print("Only plotting first column of Y")
         Y = Y[:, 0]
         Yp = Yp[:, 0]
-        Y_scale = Y_scale[0]
         Y_center = Y_center[0]
 
     kwargs['cmap'] = kwargs.get('cmapY', 'Greys')
@@ -148,6 +165,8 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
         kwargs.pop('cmapY')
     if('cmapX' in kwargs):
         kwargs.pop('cmapX')
+    if('cmap2D' in kwargs):
+        kwargs.pop('cmap2D')
 
     if('color' not in kwargs):
         kwargs['c'] = Y_scale * np.abs(Y - Yp)
