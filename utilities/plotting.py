@@ -36,16 +36,19 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
                    )
 
     if('cmap' in kwargs and cbar==True):
+        cb_args = {}
         if(cb_ax is None):
-            cba = ax
+            cb_args['ax'] = ax
+            cb_args['fraction'] = 0.4
         else:
-            cba = cb_ax
+            cb_args['cax'] = cb_ax
+            cb_args['fraction'] = 1.0
         # pad=0.05, fraction = 0.04
 
-        cbar = fig.colorbar(p, cax=cba, fraction = 1.0,
+        cbar = fig.colorbar(p, **cb_args,
                             orientation=cb_orientation,
                             )
-    
+
         if(cb_orientation=='horizontal'):
             cbar.ax.set_xlabel(cbar_title)
         else:
