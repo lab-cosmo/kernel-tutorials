@@ -8,7 +8,9 @@ utils_dir = os.path.dirname(os.path.realpath(__file__))
 plt.style.use('{}/kernel_pcovr.mplstyle'.format(utils_dir))
 
 
-def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar_title="", **kwargs):
+def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
+              cbar_title="", cb_orientation='vertical', cb_ax = None,
+              **kwargs):
     """
         Base class for all plotting utilities
         Author: Rose K. Cersonsky
@@ -33,10 +35,21 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar_title="", *
                    **kwargs
                    )
 
-    if('cmap' in kwargs):
-        cbar = fig.colorbar(p, ax=ax, pad=0.05,
-                            fraction=0.04, orientation='vertical')
-        cbar.ax.set_ylabel(cbar_title, horizontalalignment='center')
+    if('cmap' in kwargs and cbar==True):
+        if(cb_ax is None):
+            cba = ax
+        else:
+            cba = cb_ax
+        # pad=0.05, fraction = 0.04
+
+        cbar = fig.colorbar(p, cax=cba, fraction = 1.0,
+                            orientation=cb_orientation,
+                            )
+    
+        if(cb_orientation=='horizontal'):
+            cbar.ax.set_xlabel(cbar_title)
+        else:
+            cbar.ax.set_ylabel(cbar_title)
 
     ax.set_title(title)
     ax.set_xlabel(x_label)
@@ -90,12 +103,7 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
     """
 
     Y = Y.reshape(Y.shape[0], -1)
-    kwargs['cmap'] = kwargs.get('cmapX', "viridis")
 
-    if('cmapY' in kwargs):
-        kwargs.pop('cmapY')
-    if('cmapX' in kwargs):
-        kwargs.pop('cmapX')
 
     if('color' not in kwargs):
         if Y.shape[-1] != 1:
@@ -124,15 +132,23 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
             if('vmin' in kwargs):
                 kwargs.pop('vmin'); kwargs.pop('vmax')
         else:
-            if('cmap2D' in kwargs):
-                kwargs.pop('cmap2D')
             Y = Y[:, 0]
+            Y_center = np.array([Y_center])
+            Y_center = Y_center.reshape(Y_center.shape[0], -1)
+            Y_center = Y_center[0]
+
             kwargs['c'] = Y * Y_scale + Y_center
+            kwargs['cmap'] = kwargs.get('cmapX', "viridis")
 
         if('cmap2D' in kwargs):
             kwargs.pop('cmap2D')
         if('colormap' in kwargs):
             kwargs.pop('colormap')
+
+    if('cmapY' in kwargs):
+        kwargs.pop('cmapY')
+    if('cmapX' in kwargs):
+        kwargs.pop('cmapX')
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "CS")
     kwargs['x_label'] = kwargs.get('x_label', r'$PC_1$')
@@ -164,7 +180,6 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
             Y_scale = Y_scale[0]
         if isinstance(Y_center, np.ndarray) or isinstance(Y_center, list):
             Y_center = Y_center[0]
-
     kwargs['cmap'] = kwargs.get('cmapY', 'Greys')
 
     if('cmapY' in kwargs):
@@ -192,7 +207,8 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
     ax.set_xlim([cm[0]-bound, cm[0]+bound])
     ax.set_ylim([cm[1]-bound, cm[1]+bound])
     ax.plot([cm[0]-bound, cm[0]+bound], [cm[1]-bound,
-                                         cm[1]+bound], 'k--', zorder=0, linewidth=1)
+                                         cm[1]+bound],
+            'r--', zorder=4, linewidth=1)
 
     return ax
 
