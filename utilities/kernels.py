@@ -49,7 +49,7 @@ def gaussian_kernel(XA, XB, gamma=1.0):
     return np.exp(-D*gamma)
 
 
-def center_kernel(K, reference=None):
+def center_kernel(K, reference=None, ref_cmean=None, ref_rmean=None, ref_mean=None):
     """
         Centers a kernel
 
@@ -77,9 +77,23 @@ def center_kernel(K, reference=None):
     if K_ref.shape[0] != K_ref.shape[1]:
         raise ValueError(
             "The reference kernel is not square, and does not define a RKHS")
-    oneMN = np.ones((K.shape[0], K.shape[1]))/K.shape[1]
-    oneNN = np.ones((K.shape[1], K.shape[1]))/K.shape[1]
-    Kc = K - np.matmul(oneMN, K_ref) - np.matmul(K, oneNN) + \
-        np.matmul(np.matmul(oneMN, K_ref), oneNN)
+    # oneMN = np.ones((K.shape[0], K.shape[1]))/K.shape[1]
+    # oneNN = np.ones((K.shape[1], K.shape[1]))/K.shape[1]
+    #
+    # Kc = K - np.matmul(oneMN, K_ref) - np.matmul(K, oneNN) + \
+    #     np.matmul(np.matmul(oneMN, K_ref), oneNN)
+
+    if(ref_cmean is None):
+        ref_cmean = K_ref.mean(axis=0)
+
+    if(ref_rmean is None):
+        ref_rmean = K.mean(axis=1)
+
+    if(ref_mean is None):
+        ref_mean = K_ref.mean()
+
+    Kc = K - np.broadcast_arrays(K, ref_cmean) \
+           - ref_rmean.reshape((K.shape[0], 1)) \
+           + np.broadcast_arrays(K, ref_mean)
 
     return Kc

@@ -275,11 +275,8 @@ class KRR:
             print("No input data supplied during fitting. \
                    \nTransformations/statistics only available for kernel inputs.")
 
-        # Compute maximum eigenvalue of kernel matrix
-        maxeig = np.amax(np.linalg.eigvalsh(K))
-
         # Regularize the model
-        Kreg = K + np.eye(K.shape[0]) * maxeig * self.regularization
+        Kreg = K + np.eye(K.shape[0]) * self.regularization
 
         # Solve the model
         self.PKY = np.linalg.solve(Kreg, Y)
