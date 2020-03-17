@@ -193,7 +193,7 @@ class KPCovR:
         if(len(Y.shape) == 1):
             Yhat = Yhat.reshape(-1, 1)
 
-        K_pca = K / (np.trace(K) / X.shape[0])
+        K_pca = K #/ (np.trace(K) / X.shape[0])
         K_lr = np.matmul(Yhat, Yhat.T)
 
         Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
@@ -205,7 +205,7 @@ class KPCovR:
         P_krr = np.linalg.solve(K + np.eye(len(K)) * self.regularization, Yhat)
         P_krr = np.matmul(P_krr, Yhat.T)
 
-        P_kpca = np.eye(K.shape[0]) / (np.trace(K) / K.shape[0])
+        P_kpca = np.eye(K.shape[0]) #/ (np.trace(K) / K.shape[0])
 
         P = (self.alpha * P_kpca) + (1.0 - self.alpha) * P_krr
 
@@ -426,7 +426,7 @@ class SparseKPCovR:
         iCsqrt = np.matmul(
             np.matmul(U_C, np.diagflat(np.sqrt(v_C_inv))), U_C.T)
 
-        C_pca = C / (np.trace(C)/C.shape[0])
+        C_pca = C #/ (np.trace(C)/C.shape[0])
 
         C_lr = np.linalg.pinv(C + self.regularization*np.eye(C.shape[0]))
         C_lr = np.matmul(phi_active, C_lr)
