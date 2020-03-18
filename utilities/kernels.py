@@ -92,8 +92,8 @@ def center_kernel(K, reference=None, ref_cmean=None, ref_rmean=None, ref_mean=No
     if(ref_mean is None):
         ref_mean = K_ref.mean()
 
-    Kc = K - np.broadcast_arrays(K, ref_cmean) \
+    Kc = K - np.broadcast_arrays(K, ref_cmean)[1] \
            - ref_rmean.reshape((K.shape[0], 1)) \
-           + np.broadcast_arrays(K, ref_mean)
+           + np.broadcast_arrays(K, ref_mean)[1]
 
     return Kc
