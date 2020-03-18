@@ -49,7 +49,7 @@ def gaussian_kernel(XA, XB, gamma=1.0):
     return np.exp(-D*gamma)
 
 
-def center_kernel(K, reference=None, col_mean=None, row_mean=None, ref_mean=None):
+def center_kernel(K, reference=None, ref_cmean=None, ref_rmean=None, ref_mean=None):
     """
         Centers a kernel
 
@@ -83,15 +83,17 @@ def center_kernel(K, reference=None, col_mean=None, row_mean=None, ref_mean=None
     # Kc = K - np.matmul(oneMN, K_ref) - np.matmul(K, oneNN) + \
     #     np.matmul(np.matmul(oneMN, K_ref), oneNN)
 
-    if(col_mean is None):
-        _, col_mean = np.broadcast_arrays(K, K_ref.mean(axis=0))
+    if(ref_cmean is None):
+        ref_cmean = K_ref.mean(axis=0)
 
-    if(row_mean is None):
-        row_mean = K.mean(axis=1).reshape((K.shape[0], 1))
+    if(ref_rmean is None):
+        ref_rmean = K.mean(axis=1)
 
     if(ref_mean is None):
-        _, ref_mean = np.broadcast_arrays(K, K_ref.mean())
+        ref_mean = K_ref.mean()
 
-    Kc = K - col_mean - row_mean + ref_mean
+    Kc = K - np.broadcast_arrays(K, ref_cmean)[1] \
+           - ref_rmean.reshape((K.shape[0], 1)) \
+           + np.broadcast_arrays(K, ref_mean)[1]
 
     return Kc
