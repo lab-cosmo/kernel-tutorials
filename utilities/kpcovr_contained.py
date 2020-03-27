@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 from .general import get_stats, FPS, sorted_eig, eig_inv
-from .classes import KRR
 
 
 def linear_kernel(XA, XB):
@@ -185,10 +184,7 @@ class KPCovR:
         # Compute maximum eigenvalue of kernel matrix
 
         if(Yhat is None):
-            krr = KRR(regularization=self.regularization,
-                      kernel_type=self.kernel)
-            krr.fit(X=X, Y=Y, K=K)
-            Yhat = krr.transform(X=X, K=K)
+            Yhat = K @ np.linalg.pinv(K, rcond=self.regularization) @ Y
 
         if(len(Y.shape) == 1):
             Yhat = Yhat.reshape(-1, 1)
