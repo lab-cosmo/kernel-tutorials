@@ -800,7 +800,7 @@ class SparseKRR(Sparsified, Regression):
     def statistics(self, X, Y, Knm=None):
         Yp = self.transform(X, Knm=Knm)
 
-        return get_stats(x=X, y=Y, yp=P)
+        return get_stats(x=X, y=Y, yp=Yp)
 
 class MDS(Decomposition):
     """
@@ -927,31 +927,7 @@ class PCovR(PCovRBase):
         super().__init__(alpha=alpha, n_PC=n_PCA, *args, **kwargs)
         self.space = space
 
-    def compute_K(self, X, Y, Yhat=None):
-
-        X, Y, _ = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y)
-
-        # Compute K
-        if(Yhat is None):
-            lr = LR(regularization=self.regularization)
-            lr.fit(X, Y)
-
-            self.Yhat = lr.transform(X)
-
-        else:
-            self.Yhat = Yhat
-
-        if(len(Y.shape) == 1):
-            self.Yhat = self.Yhat.reshape(-1, 1)
-
-        K_pca = (X @ X.T)
-        K_lr = (self.Yhat @ self.Yhat.T)
-
-        self.K = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
-
-    def fit_feature_space(self, X, Y, Yhat=None):
-
-        self.compute_K(X, Y, Yhat=Yhat)
+    def fit_feature_space(self, X, Y):
 
         # Compute the inverse square root of the covariance of X
         C = (X.T @ X)
@@ -962,8 +938,11 @@ class PCovR(PCovRBase):
         Csqrt = (U_C @ np.diagflat(np.sqrt(v_C)) @ U_C.T)
         iCsqrt = (U_C @ np.diagflat(np.sqrt(eig_inv(v_C))) @ U_C.T)
 
-        Ct = (iCsqrt @ X.T)
-        Ct = (Ct @ self.K @ Ct.T)
+        C_pca = X.T @ X
+        C_lr = iCsqrt @ X.T @ self.Yhat
+        C_lr = C_lr @ C_lr.T
+
+        Ct = self.alpha * C_pca + (1.0 - self.alpha) * C_lr
 
         v_Ct, U_Ct = sorted_eig(Ct, thresh=self.regularization, n=self.n_PCA)
 
@@ -976,11 +955,14 @@ class PCovR(PCovRBase):
         PTY = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PCA].T @ iCsqrt
         self.PTY = PTY @ X.T @ Y
 
-    def fit_structure_space(self, X, Y, Yhat=None):
+    def fit_structure_space(self, X, Y):
 
-        self.compute_K(X, Y, Yhat=Yhat)
-        v, U = sorted_eig(
-            self.K, thresh=self.regularization, n=self.n_PCA)
+        K_pca = (X @ X.T)
+        K_lr = (self.Yhat @ self.Yhat.T)
+
+        Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
+
+        v, U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PCA)
 
         v_inv = eig_inv(v[:self.n_PCA])
         T = U[:, :self.n_PCA] @ np.diagflat(np.sqrt(v[:self.n_PCA]))
@@ -1006,15 +988,27 @@ class PCovR(PCovRBase):
 
         X, Y, _ = self.preprocess(X=X, Y=Y)
 
+        if(Yhat is None):
+            lr = LR(regularization=self.regularization)
+            lr.fit(X, Y)
+
+            self.Yhat = lr.transform(X)
+
+        else:
+            self.Yhat = Yhat
+
+        if(len(Y.shape) == 1):
+            self.Yhat = self.Yhat.reshape(-1, 1)
+
         sample_heavy = X.shape[0] > X.shape[1]
         if((self.space == 'feature' or sample_heavy) and self.space != 'structure'):
             if(X.shape[0] > X.shape[1] and self.space != 'feature'):
                 print("# samples > # features, computing in feature space")
-            self.fit_feature_space(X, Y, Yhat=Yhat)
+            self.fit_feature_space(X, Y)
         elif(self.space == 'structure' or not sample_heavy):
             if(sample_heavy and self.space != 'structure'):
                 print("# samples < # features, computing in structure space")
-            self.fit_structure_space(X, Y, Yhat=Yhat)
+            self.fit_structure_space(X, Y)
         else:
             raise Exception('Space Error: \
                               Please specify either space = "structure",\
@@ -1122,10 +1116,9 @@ class KPCovR(PCovRBase, Kernelized):
         K_pca = K #/ (np.trace(K) / X.shape[0])
         K_lr = Yhat @ Yhat.T
 
-        self.Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
+        Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
 
-        self.v, self.U = sorted_eig(
-            self.Kt, thresh=self.regularization, n=self.n_PCA)
+        self.v, self.U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PCA)
 
         P_krr = np.linalg.solve(K + np.eye(len(K)) * self.regularization, Yhat)
         P_krr = P_krr @ Yhat.T
