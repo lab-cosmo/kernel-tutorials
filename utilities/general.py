@@ -79,15 +79,19 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
         Returns n eigenvalues and vectors sorted
         from largest to smallest eigenvalue
     """
+
     if(sps):
         from scipy.sparse.linalg import eigs as speig
         if(n is None):
-            n = mat.shape[0] - 1
-        val, vec = speig(mat, k=n, tol=thresh)
+            k = mat.shape[0] - 1
+        else:
+            k = n
+        val, vec = speig(mat, k=k, tol=thresh)
         val = np.real(val)
         vec = np.real(vec)
 
         idx = sorted(range(len(val)), key=lambda i: -val[i])
+
         val = val[idx]
         vec = vec[:, idx]
 
@@ -96,8 +100,13 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
         val = np.flip(val, axis=0)
         vec = np.flip(vec, axis=1)
 
-    vec[:, val < thresh] = 0
-    val[val < thresh] = 0
+    if(n is not None and len(val[val<thresh]) < n):
+        vec[:, val < thresh] = 0
+        val[val < thresh] = 0
+    else:
+        vec = vec[:, val>=thresh]
+        val = val[val>=thresh]
+
 
     return val[:n], vec[:, :n]
 
