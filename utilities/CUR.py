@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from scipy.sparse.linalg import svds as svd
 from scipy.sparse.linalg import eigs as speig
 
@@ -9,6 +10,7 @@ from tqdm import tqdm as tqdm
 #
 # tqdm = lambda x: x
 
+start = time.time()
 def sorted_eig(mat, thresh=0.0, n=None, sps=True):
     """
         Returns n eigenvalues and vectors sorted
@@ -74,21 +76,27 @@ def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
         where ~Y is the properties obtained by linear regression.
     """
 
+    start = time.time()
     cov = np.matmul(X.T, X)
+#    print("COV", time.time() - start)
+    start = time.time()
     v_C, U_C = sorted_eig(cov, thresh=regularization)
+#    print("COV EIG", time.time() - start)
+    start = time.time()
     U_C = U_C[:, v_C > regularization]
     v_C = v_C[v_C > regularization]
 
-    Csqrt = np.matmul(np.matmul(U_C, np.diag(np.sqrt(v_C))), U_C.T)
-    Cinv = np.linalg.pinv(cov, rcond=regularization)
-    Y_hat = np.matmul(X.T, Y)
-    Y_hat = np.matmul(Cinv, Y_hat)
+    v_C_inv = np.linalg.pinv([v_C]).reshape(1,-1)
+
+    iCsqrt = U_C @ np.diagflat(np.sqrt(v_C_inv)) @ U_C.T
+    
+    Y_hat = iCsqrt @ X.T @ Y
 
     if(len(Y_hat.shape) < 2):
         Y_hat = Y_hat.reshape((-1, 1))
 
-    C_lr = np.matmul(Csqrt, Y_hat)
-    C_lr = np.matmul(C_lr, C_lr.T)
+    C_lr = Y_hat @ Y_hat.T
+    start = time.time()
 
     C_pca = cov
     C = alpha*C_pca + (1.0-alpha)*C_lr
@@ -145,15 +153,24 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
 
     for nn in tqdm(range(n)):
         if(len(idxs) <= nn):
-            try:
-                Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
-            except:
-                print("Only {} features possible".format(nn))
-                return list(idxs)
+#            try:
+
+            start = time.time()
+            Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
+#            print("CT", time.time() - start)
+            start = time.time()
+
+#            except:
+#                print("Only {} features possible".format(nn))
+#                return list(idxs)
             if(not sps):
                 v_Ct, U_Ct = sorted_eig(Ct, n=k)
+#                print("CT EIG", time.time() - start)
+                start = time.time()
             else:
                 v_Ct, U_Ct = speig(Ct, k)
+#                print("CT SPEIG", time.time() - start)
+                start = time.time()
                 U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
 
             pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
@@ -161,7 +178,7 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
             j = pi.argmax()
             idxs.append(j)
         # else:
-        #     print(nn, idxs[nn])
+#        #     print(nn, idxs[nn])
 
         v = np.linalg.pinv(
             np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
@@ -170,11 +187,22 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
 
         Ycopy -= np.matmul(v, Ycopy)
 
+#        print("Y UPDATE", time.time() - start)
+        start = time.time()
         v = Acopy[:, idxs[nn]] / \
             np.sqrt(np.matmul(Acopy[:, idxs[nn]], Acopy[:, idxs[nn]]))
 
+
         for i in range(Acopy.shape[1]):
             Acopy[:, i] -= v * np.dot(v, Acopy[:, i])
+
+#        xj_norm = np.linalg.norm(Acopy[:, idxs[nn]])**2
+#        vA = (np.matmul(Acopy.T, Acopy[:,idxs[nn]]) / xj_norm).reshape(1,-1)
+#        dA = np.array([vA[:,i]*Acopy[:,idxs[nn]] for i in range(Acopy.shape[-1])]).T
+#        Acopy -= dA
+
+#        print("X UPDATE", time.time() - start)
+        start = time.time()
 
     return list(idxs)
 
