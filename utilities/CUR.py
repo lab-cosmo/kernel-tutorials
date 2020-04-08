@@ -74,21 +74,19 @@ def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
         where ~Y is the properties obtained by linear regression.
     """
 
-    cov = np.matmul(X.T, X)
-    v_C, U_C = sorted_eig(cov, thresh=regularization)
-    U_C = U_C[:, v_C > regularization]
-    v_C = v_C[v_C > regularization]
+    cov = X.T @ X
 
-    Csqrt = np.matmul(np.matmul(U_C, np.diag(np.sqrt(v_C))), U_C.T)
-    Cinv = np.linalg.pinv(cov, rcond=regularization)
-    Y_hat = np.matmul(X.T, Y)
-    Y_hat = np.matmul(Cinv, Y_hat)
+    # changing these next two lines can cause a LARGE error
+    Csqrt = scipy.linalg.sqrtm(cov)
+    Cinv = np.linalg.pinv(cov, hermitian=True)
+
+    # parentheses speed up calculation greatly
+    Y_hat = Csqrt @ Cinv @ (X.T @ Y)
 
     if(len(Y_hat.shape) < 2):
         Y_hat = Y_hat.reshape((-1, 1))
 
-    C_lr = np.matmul(Csqrt, Y_hat)
-    C_lr = np.matmul(C_lr, C_lr.T)
+    C_lr = Y_hat @ Y_hat.T
 
     C_pca = cov
     C = alpha*C_pca + (1.0-alpha)*C_lr
