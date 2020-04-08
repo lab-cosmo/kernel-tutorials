@@ -2,6 +2,7 @@ import numpy as np
 import time
 from scipy.sparse.linalg import svds as svd
 from scipy.sparse.linalg import eigs as speig
+import scipy
 
 from tqdm import tqdm as tqdm
 
