@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics import r2_score as calc_R2
 
-from .kernels import *
+from .kernels import gaussian_kernel
 
 
 def eig_inv(v):
@@ -11,7 +11,7 @@ def eig_inv(v):
 
 def normalize_matrix(A, scale=None):
     """ Normalize a matrix so that it has unit variance """
-    if(scale is None):
+    if scale is None:
         scale = np.linalg.norm(A) / np.sqrt(len(A))
     return A / scale
 
@@ -39,13 +39,13 @@ def FPS(X, n=0, idx=None):
     fps_idxs = np.zeros(n, dtype=np.int)
     d = np.zeros(n)
 
-    if(idx is None):
+    if idx is None:
         # Pick first point at random
         idx = np.random.randint(0, N)
     fps_idxs[0] = idx
 
     # Compute distance from all points to the first point
-    d1 = np.linalg.norm(X-X[idx], axis=1)**2
+    d1 = np.linalg.norm(X - X[idx], axis=1)**2
 
     # Loop over the remaining points...
     for i in range(1, n):
@@ -60,7 +60,7 @@ def FPS(X, n=0, idx=None):
         # Set distances to minimum among the last two selected points
         d1 = np.minimum(d1, d2)
 
-        if(d1.max() == 0.0):
+        if d1.max() == 0.0:
             print("Only {} FPS Possible".format(i))
             return fps_idxs[:i], d[:i]
 
@@ -79,15 +79,19 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
         Returns n eigenvalues and vectors sorted
         from largest to smallest eigenvalue
     """
+
     if(sps):
         from scipy.sparse.linalg import eigs as speig
         if(n is None):
-            n = mat.shape[0] - 1
-        val, vec = speig(mat, k=n, tol=thresh)
+            k = mat.shape[0] - 1
+        else:
+            k = n
+        val, vec = speig(mat, k=k, tol=thresh)
         val = np.real(val)
         vec = np.real(vec)
 
         idx = sorted(range(len(val)), key=lambda i: -val[i])
+
         val = val[idx]
         vec = vec[:, idx]
 
@@ -96,43 +100,43 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
         val = np.flip(val, axis=0)
         vec = np.flip(vec, axis=1)
 
-    vec[:, val < thresh] = 0
-    val[val < thresh] = 0
+    if(n is not None and len(val[val<thresh]) < n):
+        vec[:, val < thresh] = 0
+        val[val < thresh] = 0
+    else:
+        vec = vec[:, val>=thresh]
+        val = val[val>=thresh]
+
 
     return val[:n], vec[:, :n]
 
 
-def get_stats(y=None, yp=None, x=None,
-              t=None, xr=None, k=None, kapprox=None):
-    """
-        Returns available statistics given provided data
-    """
+def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None):
+    """Returns available statistics given provided data"""
     stats = {}
-    if(y is not None and yp is not None):
+    if y is not None and yp is not None:
         stats["Coefficient of Determination<br>($R^2$)"] = calc_R2(y, yp)
-        stats["Regression Error"] = np.linalg.norm(y-yp)/y.shape[0]
-    if(x is not None and t is not None):
+        stats["Regression Error"] = np.linalg.norm(y - yp) / y.shape[0]
+    if x is not None and t is not None:
         stats[r"Dataset Variance<br>$\sigma_X^2$"] = x.var(axis=0).sum()
         stats[r"Projection Variance<br>$\sigma_T^2$"] = t.var(axis=0).sum()
-        stats[r"Residual Variance<br>$\sigma_X^2 - \sigma_T^2$"] = x.var(
-            axis=0).sum()-t.var(axis=0).sum()
-    if(x is not None and xr is not None):
-        stats[r"Representation Error"] = (((x-xr)**2).mean(axis=0).sum())
-    if(k is not None and kapprox is not None):
-        stats["Error in the Kernel Approx."] = np.linalg.norm(
-            kapprox-k)**2/np.linalg.norm(k)**2.0
+        error = x.var(axis=0).sum() - t.var(axis=0).sum()
+        stats[r"Residual Variance<br>$\sigma_X^2 - \sigma_T^2$"] = error
+    if x is not None and xr is not None:
+        stats[r"Representation Error"] = ((x - xr)**2).mean(axis=0).sum()
+    if k is not None and kapprox is not None:
+        error = np.linalg.norm(kapprox - k)**2 / np.linalg.norm(k)**2.0
+        stats["Error in the Kernel Approx."] = error
     return stats
 
 
 def split_data(N, n_train=0):
-    """
-        Returns indices for the training and tests data sets
-    """
+    """Returns indices for the training and tests data sets"""
     global n_test
     # Splits in train and test sets
     if n_train <= 0:  # defaults 50-50 split
-        n_train = int(N/2)
-    n_test = N-n_train
+        n_train = int(N / 2)
+    n_test = N - n_train
     r_train = np.asarray(range(N))
     np.random.shuffle(r_train)
     i_test = list(sorted(r_train[n_train:]))
@@ -142,21 +146,27 @@ def split_data(N, n_train=0):
 
 
 def load_variables(cache_file="../datasets/precomputed.npz", **kwargs):
-    """ Loads the cache holding the soap vectors for CSD """
+    """Loads the cache holding the soap vectors for CSD"""
     return calculate_variables(**dict(np.load(cache_file)), **kwargs)
 
 
-def calculate_variables(X, Y, indices, n_atoms, N=10, n_FPS=200, kernel_func=gaussian_kernel,
-                        i_train=None, i_test=None,  **kwargs
-                        ):
-    """
-        Loads necessary data for the tutorials
-    """
+def calculate_variables(
+        X,
+        Y,
+        indices,
+        n_atoms,
+        N=10,
+        n_FPS=200,
+        kernel_func=gaussian_kernel,
+        i_train=None,
+        i_test=None,
+        **kwargs):
+    """Loads necessary data for the tutorials"""
 
     print(len(indices), " frames in total.")
     print("Shape of Input Data is ", X.shape, ".")
 
-    if(n_FPS is not None):
+    if n_FPS is not None:
         fps_idxs, _ = FPS(X.T, n_FPS)
         print("Taking a subsampling of ", n_FPS, " columns")
         X = X[:, fps_idxs]
@@ -168,7 +178,7 @@ def calculate_variables(X, Y, indices, n_atoms, N=10, n_FPS=200, kernel_func=gau
         try:
             i_test, i_train = split_data(len(Y), n_train)
         except:
-            n_train = int(len(Y)/2)
+            n_train = int(len(Y) / 2)
             i_test, i_train = split_data(len(Y), n_train)
 
     n_train = len(i_train)
@@ -178,7 +188,7 @@ def calculate_variables(X, Y, indices, n_atoms, N=10, n_FPS=200, kernel_func=gau
     Y_test = Y[i_test]
 
     Y_center = Y_train.mean(axis=0)
-    Y_scale = np.linalg.norm(Y_train-Y_center) / np.sqrt(n_train)
+    Y_scale = np.linalg.norm(Y_train - Y_center) / np.sqrt(n_train)
 
     Y = center_matrix(Y, center=Y_center)
     Y_train = center_matrix(Y_train, center=Y_center)
@@ -186,21 +196,21 @@ def calculate_variables(X, Y, indices, n_atoms, N=10, n_FPS=200, kernel_func=gau
     Y_train = normalize_matrix(Y_train, scale=Y_scale)
     Y_test = normalize_matrix(Y_test, scale=Y_scale)
 
-    if(len(Y) == len(indices)):
-        print(
-            "Computing training/testing sets from summed environment-centered soap vectors.")
+    if len(Y) == len(indices):
+        print("Computing training/testing sets from summed environment-centered soap vectors.")
         X_center = X.mean(axis=0)
         X = center_matrix(X, center=X_center)
 
         X_scale = np.linalg.norm(X) / np.sqrt(X.shape[0])
         X = normalize_matrix(X, scale=X_scale)
 
-        frame_starts = [sum(nat[:i]) for i in range(len(n_atoms)+1)]
-        X_split = np.array([X[frame_starts[i]:frame_starts[i+1]]
-                            for i in range(len(indices))])
+        frame_starts = [sum(nat[:i]) for i in range(len(n_atoms) + 1)]
+        X_split = np.array([
+            X[frame_starts[i]:frame_starts[i + 1]]
+            for i in range(len(indices))
+        ])
 
         X_work = np.array([np.sum(xs, axis=0) for xs in X_split])
-
         X_train = X_work[i_train]
         X_test = X_work[i_test]
 
@@ -226,14 +236,11 @@ def calculate_variables(X, Y, indices, n_atoms, N=10, n_FPS=200, kernel_func=gau
     try:
         print("Shape of kernel is: ", K_train.shape, ".")
     except:
-        if(len(Y) == len(indices)):
-            print(
-                "Computing kernels from summing kernels of environment-centered soap vectors.")
+        if len(Y) == len(indices):
+            print("Computing kernels from summing kernels of environment-centered soap vectors.")
 
-            K_train = summed_kernel(
-                X_split[i_train], X_split[i_train], kernel_func)
-            K_test = summed_kernel(
-                X_split[i_test], X_split[i_train], kernel_func)
+            K_train = summed_kernel(X_split[i_train], X_split[i_train], kernel_func)
+            K_test = summed_kernel(X_split[i_test], X_split[i_train], kernel_func)
 
             K_test = center_kernel(K_test, reference=K_train)
             K_train = center_kernel(K_train)
