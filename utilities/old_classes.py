@@ -14,7 +14,7 @@ class PCA:
         Performs principal component analysis
 
        ---Attributes---
-        n_PCA: number of PCA components to retain
+        n_PC: number of PCA components to retain
             (`None` retains all components)
         C: covariance matrix of the data
         self.U: eigenvalues of the covariance matrix
@@ -30,11 +30,11 @@ class PCA:
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_PCA=None, regularization=1e-12):
+    def __init__(self, n_PC=None, regularization=1e-12):
 
         # Initialize attributes
 
-        self.n_PCA = n_PCA
+        self.n_PC = n_PC
         self.C = None
         self.PXT = None
         self.PTX = None
@@ -52,9 +52,9 @@ class PCA:
         self.C = np.matmul(X.T, X) / (X.shape[0] - 1)
 
         # Compute eigendecomposition of covariance matrix
-        v, U = sorted_eig(self.C, thresh=self.regularization, n=self.n_PCA)
+        v, U = sorted_eig(self.C, thresh=self.regularization, n=self.n_PC)
 
-        self.PXT = U[:, :self.n_PCA]
+        self.PXT = U[:, :self.n_PC]
         self.PTX = self.PXT.T
 
     def transform(self, X):
@@ -144,7 +144,7 @@ class KPCA:
 
        ---Arguments---
         K: kernel matrix
-        n_KPCA: number of principal components to retain in the decomposition
+        n_PC: number of principal components to retain in the decomposition
 
        ---Returns---
         T: KPCA scores
@@ -155,8 +155,8 @@ class KPCA:
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_KPCA, regularization=1e-12, kernel_type="linear"):
-        self.n_KPCA = n_KPCA
+    def __init__(self, n_PC, regularization=1e-12, kernel_type="linear"):
+        self.n_PC = n_PC
         self.PTX = None
         self.PKT = None
         self.PTK = None
@@ -182,11 +182,11 @@ class KPCA:
 
         # Compute eigendecomposition of kernel
         self.v, self.U = sorted_eig(
-            K, thresh=self.regularization, n=self.n_KPCA)
+            K, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(self.v[:self.n_KPCA])
+        v_inv = eig_inv(self.v[:self.n_PC])
 
-        self.PKT = np.matmul(self.U[:, :self.n_KPCA],
+        self.PKT = np.matmul(self.U[:, :self.n_PC],
                              np.diagflat(np.sqrt(v_inv)))
         self.T = np.matmul(K, self.PKT)
         self.PTK = np.matmul(np.diagflat(v_inv),
@@ -312,7 +312,7 @@ class SparseKPCA:
 
        ---Arguments---
         K: kernel matrix
-        n_KPCA: number of principal components to retain in the decomposition
+        n_PC: number of principal components to retain in the decomposition
 
        ---Returns---
         T: KPCA scores
@@ -323,10 +323,10 @@ class SparseKPCA:
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_KPCA, n_active=100, regularization=1e-12,
+    def __init__(self, n_PC, n_active=100, regularization=1e-12,
                  kernel_type="linear"):
 
-        self.n_KPCA = n_KPCA
+        self.n_PC = n_PC
         self.n_active = n_active
         self.PKT = None
         self.X = None
@@ -372,10 +372,10 @@ class SparseKPCA:
         self.v_C, self.U_C = sorted_eig(
             C, thresh=self.regularization, n=self.n_active)
 
-        self.PKT = np.matmul(self.U_active, self.U_C[:, :self.n_KPCA])
+        self.PKT = np.matmul(self.U_active, self.U_C[:, :self.n_PC])
         self.T = np.matmul(Knm - self.barKM, self.PKT)
         self.PTX = np.matmul(np.diagflat(
-            eig_inv(self.v_C[:self.n_KPCA])), np.matmul(self.T.T, X))
+            eig_inv(self.v_C[:self.n_PC])), np.matmul(self.T.T, X))
 
     def transform(self, X, Knm=None):
         if self.PKT is None:
@@ -566,7 +566,7 @@ class PCovR:
         X: independent (predictor) variable, centered and normalized
         Y: dependent (response) variable, centered and normalized
         alpha: tuning parameter
-        n_PCA: number of principal components to retain
+        n_PC: number of principal components to retain
         loss: compute individual PCA and linear regression loss terms
 
        ---Returns---
@@ -586,9 +586,9 @@ class PCovR:
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha=0.0, n_PCA=None, regularization=1e-12, space='auto'):
+    def __init__(self, alpha=0.0, n_PC=None, regularization=1e-12, space='auto'):
         self.alpha = alpha
-        self.n_PCA = n_PCA
+        self.n_PC = n_PC
         self.regularization = regularization
 
         self.v = None
@@ -636,18 +636,18 @@ class PCovR:
         Ct = np.matmul(iCsqrt, X.T)
         Ct = np.matmul(np.matmul(Ct, self.K), Ct.T)
 
-        v_Ct, U_Ct = sorted_eig(Ct, thresh=self.regularization, n=self.n_PCA)
+        v_Ct, U_Ct = sorted_eig(Ct, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v_Ct[:self.n_PCA])
+        v_inv = eig_inv(v_Ct[:self.n_PC])
 
-        PXV = np.matmul(iCsqrt, U_Ct[:, :self.n_PCA])
+        PXV = np.matmul(iCsqrt, U_Ct[:, :self.n_PC])
 
         self.PXT = np.matmul(PXV,
-                             np.diagflat(np.sqrt(v_Ct[:self.n_PCA])))
+                             np.diagflat(np.sqrt(v_Ct[:self.n_PC])))
         self.PTX = np.matmul(np.diagflat(np.sqrt(v_inv)),
-                             np.matmul(U_Ct[:, :self.n_PCA].T, Csqrt))
+                             np.matmul(U_Ct[:, :self.n_PC].T, Csqrt))
         PTY = np.matmul(np.diagflat(np.sqrt(v_inv)),
-                        U_Ct[:, :self.n_PCA].T)
+                        U_Ct[:, :self.n_PC].T)
         PTY = np.matmul(PTY, iCsqrt)
         self.PTY = np.matmul(np.matmul(PTY, X.T), Y)
 
@@ -655,11 +655,11 @@ class PCovR:
 
         self.compute_K(X, Y, Yhat=Yhat)
         self.v, self.U = sorted_eig(
-            self.K, thresh=self.regularization, n=self.n_PCA)
+            self.K, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(self.v[:self.n_PCA])
-        self.T = np.matmul(self.U[:, :self.n_PCA],
-                           np.diagflat(np.sqrt(self.v[:self.n_PCA])))
+        v_inv = eig_inv(self.v[:self.n_PC])
+        self.T = np.matmul(self.U[:, :self.n_PC],
+                           np.diagflat(np.sqrt(self.v[:self.n_PC])))
 
         P_lr = np.matmul(X.T, X) + np.eye(X.shape[1]) * self.regularization
         P_lr = np.linalg.pinv(P_lr)
@@ -674,7 +674,7 @@ class PCovR:
         P_pca = X.T
 
         P = (self.alpha * P_pca) + (1.0 - self.alpha) * P_lr
-        self.PXT = np.matmul(P, np.matmul(self.U[:, :self.n_PCA],
+        self.PXT = np.matmul(P, np.matmul(self.U[:, :self.n_PC],
                                           np.diag(np.sqrt(v_inv))))
         self.PTY = np.matmul(np.diagflat(v_inv),
                              np.matmul(self.T.T, Y))

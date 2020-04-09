@@ -32,11 +32,11 @@ class Model:
         self.center = center
         self.scale = scale
 
-        self.X_center = 0
-        self.Y_center = 0
-        self.X_scale = 1
-        self.Y_scale = 1
-        self.K_ref = None
+        # self.X_center = 0
+        # self.Y_center = 0
+        # self.X_scale = 1
+        # self.Y_scale = 1
+        # self.K_ref = None
 
     def preprocess(self, X=None, Y=None, K=None,
                    X_ref=None, Y_ref=None, K_ref=None,
@@ -49,6 +49,12 @@ class Model:
         supplied a similarly centered input X' for transformation.
         """
 
+        if(X_ref is None and X is not None):
+            X_ref = X.copy()
+
+        if(Y_ref is None and Y is not None):
+            Y_ref = Y.copy()
+
         if self.center:
             if X_ref is not None:
                 self.X_center = X_ref.mean(axis=0)
@@ -56,7 +62,7 @@ class Model:
             if Y_ref is not None:
                 self.Y_center = Y_ref.mean(axis=0)
 
-            if self.K_ref is None:
+            if not hasattr(self, 'K_ref'):
                 if K_ref is None:
                     K_ref = K
 
@@ -129,7 +135,7 @@ class Decomposition(Model):
     ----Attributes----
     PTX: projector from latent space to input space
     PXT: projector from input space to latent space
-    n_PCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
 
     ----Inherited Attributes----
     center: (boolean) whether to shift all inputs to zero mean
@@ -146,8 +152,7 @@ class Decomposition(Model):
 
     def __init__(self, n_PC=2, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.n_PCA = n_PC
+        self.n_PC = n_PC
         self.PXT = None
         self.PTX = None
 
@@ -270,7 +275,7 @@ class PCovRBase(Decomposition, Regression):
     ----Inherited Attributes----
     PTX: projector from latent space to input space
     PXT: projector from input space to latent space
-    n_PCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
     PXY: projector from input space to property space
     center: (boolean) whether to shift all inputs to zero mean
     regularization: (float) parameter to offset all small eigenvalues for
@@ -290,6 +295,12 @@ class PCovRBase(Decomposition, Regression):
         self.PTY = None
         self.Yhat = None
 
+        # # band-aid to inheritance error
+        # if('center' in kwargs):
+        #     self.center=kwargs['center']
+        # if('scale' in kwargs):
+        #     self.scale=kwargs['scale']
+
 
 class PCA(Decomposition):
     """
@@ -299,7 +310,7 @@ class PCA(Decomposition):
     PTX: projector from latent space to input space
     PXT: projector from input space to latent space
     center: (boolean) whether to shift all inputs to zero mean
-    n_PCA: (int) number of principal components to store
+    n_PC: (int) number of principal components to store
     regularization: (float) parameter to offset all small eigenvalues for
                     regularization
     scale: (boolean) whether to scale all inputs to unit variance
@@ -321,8 +332,8 @@ class PCA(Decomposition):
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_PCA=None, *args, **kwargs):
-        super().__init__(n_PC=n_PCA, *args, **kwargs)
+    def __init__(self, n_PC=None, *args, **kwargs):
+        super().__init__(n_PC=n_PC, *args, **kwargs)
 
     def fit(self, X):
         """
@@ -338,9 +349,9 @@ class PCA(Decomposition):
         C = (X.T @ X) / (X.shape[0] - 1)
 
         # Compute eigendecomposition of covariance matrix
-        v, U = sorted_eig(C, thresh=self.regularization, n=self.n_PCA)
+        v, U = sorted_eig(C, thresh=self.regularization, n=self.n_PC)
 
-        self.PXT = U[:, :self.n_PCA]
+        self.PXT = U[:, :self.n_PC]
         self.PTX = self.PXT.T
 
     def transform(self, X):
@@ -454,7 +465,7 @@ class KPCA(Kernelized, Decomposition):
     X: input used to train the model, if further kernels need be constructed
     center: (boolean) whether to shift all inputs to zero mean
     kernel: function to construct the kernel of the input data
-    n_PCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
     regularization: (float) parameter to offset all small eigenvalues for regularization
     scale: (boolean) whether to scale all inputs to unit variance
 
@@ -475,8 +486,8 @@ class KPCA(Kernelized, Decomposition):
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_KPCA, *args, **kwargs):
-        super(KPCA, self).__init__(n_PC=n_KPCA, *args, **kwargs)
+    def __init__(self, n_PC, *args, **kwargs):
+        super(KPCA, self).__init__(n_PC=n_PC, *args, **kwargs)
 
     def fit(self, X=None, K=None):
         X, _, K = self.preprocess(X=X, K=K, X_ref=X, K_ref=K)
@@ -495,11 +506,11 @@ class KPCA(Kernelized, Decomposition):
 
         # Compute eigendecomposition of kernel
         v, U = sorted_eig(K,
-                          thresh=self.regularization, n=self.n_PCA)
+                          thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v[:self.n_PCA])
+        v_inv = eig_inv(v[:self.n_PC])
 
-        self.PKT = U[:, :self.n_PCA] @ np.diagflat(np.sqrt(v_inv))
+        self.PKT = U[:, :self.n_PC] @ np.diagflat(np.sqrt(v_inv))
 
         T = K @ self.PKT
         self.PTK = np.diagflat(v_inv) @ T.T @ K
@@ -639,7 +650,7 @@ class SparseKPCA(Sparsified, Decomposition):
              constructed
     center: (boolean) whether to shift all inputs to zero mean
     kernel: function to construct the kernel of the input data
-    n_KPCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
     n_active: (int) size of the active set
     regularization: (float) parameter to offset all small eigenvalues for
                      regularization
@@ -662,8 +673,8 @@ class SparseKPCA(Sparsified, Decomposition):
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_KPCA, *args, **kwargs):
-        super(SparseKPCA, self).__init__(n_PC=n_KPCA, *args, **kwargs)
+    def __init__(self, n_PC, *args, **kwargs):
+        super(SparseKPCA, self).__init__(n_PC=n_PC, *args, **kwargs)
 
     def fit(self, X, Kmm=None, Knm=None, *args, **kwargs):
         # *args left in for backwards compatibility
@@ -700,9 +711,9 @@ class SparseKPCA(Sparsified, Decomposition):
         v_C, U_C = sorted_eig(
             C, thresh=self.regularization, n=self.n_active)
 
-        self.PKT = U_active @ U_C[:, :self.n_PCA]
+        self.PKT = U_active @ U_C[:, :self.n_PC]
         T = (Knm - self.barKM) @ self.PKT
-        self.PTX = np.diagflat(eig_inv(v_C[:self.n_PCA])) @ T.T @ X
+        self.PTX = np.diagflat(eig_inv(v_C[:self.n_PC])) @ T.T @ X
 
     def transform(self, X, Knm=None):
         X, _, Knm = self.preprocess(X=X, K=Knm)
@@ -864,9 +875,9 @@ class MDS(Decomposition):
         K = X @ X.T
 
         # Compute eigendecomposition of covariance matrix
-        v, U = sorted_eig(K, thresh=self.regularization, n=self.n_PCA)
+        v, U = sorted_eig(K, thresh=self.regularization, n=self.n_PC)
 
-        T = U[:, :self.n_PCA] @ np.diagflat(np.sqrt(v[:self.n_PCA]))
+        T = U[:, :self.n_PC] @ np.diagflat(np.sqrt(v[:self.n_PC]))
 
         self.PXT = np.linalg.lstsq(X, T, rcond=None)[0]
         self.PTX = np.linalg.lstsq(T, X, rcond=None)[0]
@@ -915,7 +926,7 @@ class PCovR(PCovRBase):
     Yhat: regressed properties
     alpha: (float) mixing parameter between decomposition and regression
     center: (boolean) whether to shift all inputs to zero mean
-    n_PCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
     regularization: (float) parameter to offset all small eigenvalues for
                     regularization
     scale: (boolean) whether to scale all inputs to unit variance
@@ -936,8 +947,8 @@ class PCovR(PCovRBase):
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha=0.0, n_PCA=None, space='auto', *args, **kwargs):
-        super().__init__(alpha=alpha, n_PC=n_PCA, *args, **kwargs)
+    def __init__(self, alpha=0.0, n_PC=None, space='auto', *args, **kwargs):
+        super().__init__(alpha=alpha, n_PC=n_PC, *args, **kwargs)
         self.space = space
 
     def fit_feature_space(self, X, Y):
@@ -956,15 +967,15 @@ class PCovR(PCovRBase):
 
         Ct = self.alpha * C_pca + (1.0 - self.alpha) * C_lr
 
-        v_Ct, U_Ct = sorted_eig(Ct, thresh=self.regularization, n=self.n_PCA)
+        v_Ct, U_Ct = sorted_eig(Ct, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v_Ct[:self.n_PCA])
+        v_inv = eig_inv(v_Ct[:self.n_PC])
 
-        PXV = iCsqrt @ U_Ct[:, :self.n_PCA]
+        PXV = iCsqrt @ U_Ct[:, :self.n_PC]
 
-        self.PXT = PXV @ np.diagflat(np.sqrt(v_Ct[:self.n_PCA]))
-        self.PTX = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PCA].T @ Csqrt
-        PTY = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PCA].T @ iCsqrt
+        self.PXT = PXV @ np.diagflat(np.sqrt(v_Ct[:self.n_PC]))
+        self.PTX = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PC].T @ Csqrt
+        PTY = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PC].T @ iCsqrt
         self.PTY = PTY @ X.T @ Y
 
     def fit_structure_space(self, X, Y):
@@ -973,10 +984,10 @@ class PCovR(PCovRBase):
 
         Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
 
-        v, U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PCA)
+        v, U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v[:self.n_PCA])
-        T = U[:, :self.n_PCA] @ np.diagflat(np.sqrt(v[:self.n_PCA]))
+        v_inv = eig_inv(v[:self.n_PC])
+        T = U[:, :self.n_PC] @ np.diagflat(np.sqrt(v[:self.n_PC]))
 
         P_lr = (X.T @ X) + np.eye(X.shape[1]) * self.regularization
         P_lr = np.linalg.pinv(P_lr)
@@ -990,7 +1001,7 @@ class PCovR(PCovRBase):
         P_pca = X.T
 
         P = (self.alpha * P_pca) + (1.0 - self.alpha) * P_lr
-        self.PXT = P @ U[:, :self.n_PCA] @ np.diag(np.sqrt(v_inv))
+        self.PXT = P @ U[:, :self.n_PC] @ np.diag(np.sqrt(v_inv))
         self.PTY = np.diagflat(v_inv) @  T.T @ Y
 
         self.PTX = np.diagflat(v_inv) @ T.T @ X
@@ -999,10 +1010,10 @@ class PCovR(PCovRBase):
         X, Y, _ = self.preprocess(X=X, Y=Y)
 
         if Yhat is None:
-            lr = LR(regularization=self.regularization)
-            lr.fit(X, Y)
+            # lr =
+            # lr.fit(X, Y)
 
-            self.Yhat = lr.transform(X)
+            self.Yhat = X @ np.linalg.pinv(X.T @ X + self.regularization*np.eye(X.shape[1])) @ X.T @ Y
 
         else:
             self.Yhat = Yhat
@@ -1067,7 +1078,7 @@ class KPCovR(PCovRBase, Kernelized):
     alpha: (float) mixing parameter between decomposition and regression
     center: (boolean) whether to shift all inputs to zero mean
     kernel: function to construct the kernel of the input data
-    n_PCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
     regularization: (float) parameter to offset all small eigenvalues for
                     regularization
     scale: (boolean) whether to scale all inputs to unit variance
@@ -1087,8 +1098,8 @@ class KPCovR(PCovRBase, Kernelized):
         Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, *args, **kwargs):
-        super(KPCovR, self).__init__(*args, **kwargs)
+    def __init__(self, n_PC=None, *args, **kwargs):
+        super(KPCovR, self).__init__(n_PC=n_PC, *args, **kwargs)
 
     def fit(self, X, Y, K=None, Yhat=None):
         X, Y, K = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y, K=K, K_ref=K)
@@ -1120,7 +1131,7 @@ class KPCovR(PCovRBase, Kernelized):
 
         Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
 
-        self.v, self.U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PCA)
+        self.v, self.U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PC)
 
         P_krr = np.linalg.solve(K + np.eye(len(K)) * self.regularization, Yhat)
         P_krr = P_krr @ Yhat.T
@@ -1129,9 +1140,9 @@ class KPCovR(PCovRBase, Kernelized):
 
         P = (self.alpha * P_kpca) + (1.0 - self.alpha) * P_krr
 
-        v_inv = eig_inv(self.v[:self.n_PCA])
+        v_inv = eig_inv(self.v[:self.n_PC])
 
-        self.PKT = P @ self.U[:, :self.n_PCA] @ np.diagflat(np.sqrt(v_inv))
+        self.PKT = P @ self.U[:, :self.n_PC] @ np.diagflat(np.sqrt(v_inv))
         T = K @ self.PKT
 
         PT = np.linalg.pinv(T.T @ T) @ T.T
@@ -1232,7 +1243,7 @@ class SparseKPCovR(PCovRBase, Sparsified):
     alpha: (float) mixing parameter between decomposition and regression
     center: (boolean) whether to shift all inputs to zero mean
     kernel: function to construct the kernel of the input data
-    n_PCA (int) number of principal components to store
+    n_PC (int) number of principal components to store
     n_active: (int) size of the active set
     regularization: (float) parameter to offset all small eigenvalues for
                     regularization
@@ -1253,8 +1264,8 @@ class SparseKPCovR(PCovRBase, Sparsified):
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, *args, **kwargs):
-        super(SparseKPCovR, self).__init__(*args, **kwargs)
+    def __init__(self, n_PC=None, *args, **kwargs):
+        super(SparseKPCovR, self).__init__(n_PC=n_PC, *args, **kwargs)
 
     def fit(self, X, Y, X_sparse=None, Kmm=None, Knm=None):
         X, Y, Knm = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y, K=Knm, K_ref=Kmm)
@@ -1314,7 +1325,7 @@ class SparseKPCovR(PCovRBase, Sparsified):
 
         v_Ct, U_Ct = sorted_eig(Ct, thresh=0)
 
-        PPT = iCsqrt @ U_Ct[:, :self.n_PCA] @ np.diag(np.sqrt(v_Ct[:self.n_PCA]))
+        PPT = iCsqrt @ U_Ct[:, :self.n_PC] @ np.diag(np.sqrt(v_Ct[:self.n_PC]))
 
         PKT = Umm[:, :self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
 

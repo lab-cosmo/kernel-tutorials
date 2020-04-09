@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics import r2_score as calc_R2
 
-from .kernels import gaussian_kernel
+from .kernels import gaussian_kernel, center_kernel
 
 
 def eig_inv(v):
@@ -254,7 +254,7 @@ def calculate_variables(
 
     n_train = len(X_train)
     n_test = len(X_test)
-    n_PCA = 2
+    n_PC = 2
 
     return dict(X=X, Y=Y,
                 X_split=X_split,
@@ -264,4 +264,4 @@ def calculate_variables(
                 X_test=X_test, Y_test=Y_test,
                 K_train=K_train, K_test=K_test,
                 i_train=i_train, i_test=i_test,
-                n_PCA=n_PCA, n_train=n_train, n_test=n_test)
+                n_PC=n_PC, n_train=n_train, n_test=n_test)
