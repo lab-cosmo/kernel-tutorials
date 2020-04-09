@@ -104,7 +104,7 @@ class KPCovR:
         X:              independent (predictor) variable
         Y:              dependent (response) variable
         alpha:          tuning parameter
-        n_PCA:          number of principal components to retain
+        n_PC:          number of principal components to retain
         kernel_type:    kernel function, may be either type str or function,
                         defaults to a linear kernel
 
@@ -124,11 +124,11 @@ class KPCovR:
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha=0.0, n_PCA=2,
+    def __init__(self, alpha=0.0, n_PC=2,
                  kernel_type='linear', regularization=1e-12):
 
         self.alpha = alpha
-        self.n_PCA = n_PCA
+        self.n_PC = n_PC
         self.regularization = regularization
 
         self.PKT = None
@@ -196,7 +196,7 @@ class KPCovR:
         self.Kt = Kt
 
         self.v, self.U = sorted_eig(
-            Kt, thresh=self.regularization, n=self.n_PCA)
+            Kt, thresh=self.regularization, n=self.n_PC)
 
         P_krr = np.linalg.solve(K + np.eye(len(K)) * self.regularization, Yhat)
         P_krr = np.matmul(P_krr, Yhat.T)
@@ -205,9 +205,9 @@ class KPCovR:
 
         P = (self.alpha * P_kpca) + (1.0 - self.alpha) * P_krr
 
-        v_inv = np.diagflat(eig_inv(self.v[:self.n_PCA]))
+        v_inv = np.diagflat(eig_inv(self.v[:self.n_PC]))
 
-        self.PKT = np.matmul(P, np.matmul(self.U[:, :self.n_PCA],
+        self.PKT = np.matmul(P, np.matmul(self.U[:, :self.n_PC],
                                           np.sqrt(v_inv)))
         T = np.matmul(K, self.PKT)
 
@@ -320,7 +320,7 @@ class SparseKPCovR:
         X:              independent (predictor) variable
         Y:              dependent (response) variable
         alpha:          tuning parameter
-        n_PCA:          number of principal components to retain
+        n_PC:          number of principal components to retain
         kernel_type:    kernel function, may be either type str or function,
                         defaults to a linear kernel
 
@@ -339,11 +339,11 @@ class SparseKPCovR:
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha, n_PCA, n_active=100, regularization=1e-6, kernel_type="linear"):
+    def __init__(self, alpha, n_PC, n_active=100, regularization=1e-6, kernel_type="linear"):
 
         self.alpha = alpha
         self.n_active = n_active
-        self.n_PCA = n_PCA
+        self.n_PC = n_PC
         self.regularization = regularization
 
         self.PKT = None
@@ -441,8 +441,8 @@ class SparseKPCovR:
 
         v_Ct, U_Ct = sorted_eig(Ct, thresh=0)
 
-        PPT = np.matmul(iCsqrt, U_Ct[:, :self.n_PCA])
-        PPT = np.matmul(PPT, np.diag(np.sqrt(v_Ct[:self.n_PCA])))
+        PPT = np.matmul(iCsqrt, U_Ct[:, :self.n_PC])
+        PPT = np.matmul(PPT, np.diag(np.sqrt(v_Ct[:self.n_PC])))
 
         PKT = np.matmul(Umm[:, :self.n_active-1],
                         np.diagflat(np.sqrt(vmm_inv)))
