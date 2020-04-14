@@ -790,9 +790,10 @@ class SparseKRR(Sparsified, Regression):
     def fit(self, X, Y, Kmm=None, Knm=None):
         X, Y, Knm = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y, K=Knm, K_ref=Kmm)
 
-        i_sparse, _ = FPS(X, self.n_active)
+        if Kmm is None or Knm is None:
+            i_sparse, _ = FPS(X, self.n_active)
 
-        self.X_sparse = X[i_sparse, :]
+            self.X_sparse = X[i_sparse, :]
 
         if Kmm is None:
             Kmm = self.kernel(self.X_sparse, self.X_sparse)
