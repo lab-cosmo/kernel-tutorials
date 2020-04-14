@@ -6,12 +6,7 @@ import scipy
 
 from tqdm import tqdm as tqdm
 
-# if you want to universally disable tqdm,
-# you can uncomment the following line
-#
-# tqdm = lambda x: x
 
-start = time.time()
 def sorted_eig(mat, thresh=0.0, n=None, sps=True):
     """
         Returns n eigenvalues and vectors sorted
@@ -146,32 +141,19 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
 
     for nn in tqdm(range(n)):
         if(len(idxs) <= nn):
-#            try:
 
-            start = time.time()
             Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
-#            print("CT", time.time() - start)
-            start = time.time()
 
-#            except:
-#                print("Only {} features possible".format(nn))
-#                return list(idxs)
             if(not sps):
                 v_Ct, U_Ct = sorted_eig(Ct, n=k)
-#                print("CT EIG", time.time() - start)
-                start = time.time()
             else:
                 v_Ct, U_Ct = speig(Ct, k)
-#                print("CT SPEIG", time.time() - start)
-                start = time.time()
                 U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
 
             pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
             pi[idxs] = 0  # eliminate possibility of selecting same column twice
             j = pi.argmax()
             idxs.append(j)
-        # else:
-#        #     print(nn, idxs[nn])
 
         v = np.linalg.pinv(
             np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
@@ -180,8 +162,6 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
 
         Ycopy -= np.matmul(v, Ycopy)
 
-#        print("Y UPDATE", time.time() - start)
-        start = time.time()
         v = Acopy[:, idxs[nn]] / \
             np.sqrt(np.matmul(Acopy[:, idxs[nn]], Acopy[:, idxs[nn]]))
 
@@ -189,18 +169,11 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
         for i in range(Acopy.shape[1]):
             Acopy[:, i] -= v * np.dot(v, Acopy[:, i])
 
-#        xj_norm = np.linalg.norm(Acopy[:, idxs[nn]])**2
-#        vA = (np.matmul(Acopy.T, Acopy[:,idxs[nn]]) / xj_norm).reshape(1,-1)
-#        dA = np.array([vA[:,i]*Acopy[:,idxs[nn]] for i in range(Acopy.shape[-1])]).T
-#        Acopy -= dA
 
-#        print("X UPDATE", time.time() - start)
-        start = time.time()
 
     return list(idxs)
 
 
-# Dictionary of Selection Functions
 selections = dict(svd=svd_select, pcovr=pcovr_select)
 
 
