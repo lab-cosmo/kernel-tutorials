@@ -73,7 +73,7 @@ class Model:
                 self.X_scale = np.linalg.norm(X_ref - self.X_center) / np.sqrt(X_ref.shape[0])
 
             if Y_ref is not None:
-                self.Y_scale = np.linalg.norm(Y_ref - self.Y_center) / np.sqrt(Y_ref.shape[0])
+                self.Y_scale = np.linalg.norm(Y_ref - self.Y_center, axis=0) / np.sqrt(Y_ref.shape[0] / Y_ref.shape[1])
 
         if X is not None:
             Xcopy = X.copy()
@@ -89,7 +89,7 @@ class Model:
             if self.center:
                 Ycopy = center_matrix(Ycopy, self.Y_center)
             if self.scale:
-                Y = normalize_matrix(Ycopy, scale=self.Y_scale)
+                Ycopy = normalize_matrix(Ycopy, scale=self.Y_scale)
         else:
             Ycopy = None
 
@@ -121,7 +121,7 @@ class Model:
             if self.center:
                 Ycopy = center_matrix(Ycopy, -self.Y_center)
             if self.scale:
-                Y = normalize_matrix(Ycopy, scale=(1.0 / self.Y_scale))
+                Ycopy = normalize_matrix(Ycopy, scale=(1.0 / self.Y_scale))
         else:
             Ycopy = None
 
@@ -1041,6 +1041,7 @@ class PCovR(PCovRBase):
         if self.PXT is None or self.PTY is None:
             raise Exception("Error: must fit the PCovR model before transforming")
         else:
+            X, _, _ = self.preprocess(X=X)
             T = X @ self.PXT
             Yp = X @ self.PXT @ self.PTY
             Xr = T @ self.PTX
