@@ -38,6 +38,7 @@ def _linearize(name, values):
 
 def _frame_to_json(frame):
     data = {}
+    data['size'] = len(frame)
     data['names'] = list(frame.symbols)
     data['x'] = [float(value) for value in frame.positions[:, 0]]
     data['y'] = [float(value) for value in frame.positions[:, 1]]
@@ -61,21 +62,23 @@ def _generate_environments(frames, cutoff):
     return environments
 
 
-def chemiscope_input(name, frames, projection, prediction, property, property_name="", cutoff=None):
+def chemiscope_input(meta, frames, projection, prediction, properties, property_names=None, cutoff=None):
     '''
     Get a dictionary which can be saved as JSON and used as input data for the
     chemiscope visualizer (https://chemiscope.org).
 
-    :param str name: name of the dataset
+    :param dict meta: metadata of the dataset, see the documentation at
+      https://chemiscope.org/docs/tutorial.html#input-file-format-for-chemiscope
+      for more information
     :param list frames: list of `ase.Atoms`_ objects containing all the
                         structures
     :param array projection: projection of the structural descriptor in latent
                              space
     :param array prediction: predicted values for the properties for all
                              environments in the frames
-    :param array property: actual value for properties for all environments in
+    :param array properties: actual value for properties for all environments in
                            the frames
-    :param str property_name: name of the property being considered
+    :param list property_names: name of the properties being considered
     :param float cutoff: optional. If present, will be used to generate
                          atom-centered environments
 
@@ -84,19 +87,23 @@ def chemiscope_input(name, frames, projection, prediction, property, property_na
 
     data = {
         'meta': {
-            'name': name,
+            'name': meta['name'],
+            'description': meta.get('description', None),
+            'authors': meta.get('authors', None),
+            'references': meta.get('references', None),
         }
     }
 
     projection = np.asarray(projection)
     prediction = np.asarray(prediction)
-    property = np.asarray(property)
+    property = np.asarray(properties)
 
-    if not property_name:
-        property_name = "property"
+    if not property_names:
+        property_names = [f'property_{i}' for i in range(properties.shape[1])]
 
     assert projection.shape[0] == prediction.shape[0]
     assert projection.shape[0] == property.shape[0]
+    assert len(property_names) == properties.shape[1]
 
     n_atoms = sum(len(f) for f in frames)
 
@@ -109,21 +116,22 @@ def chemiscope_input(name, frames, projection, prediction, property, property_na
             "the number of features do not match the number of environments"
         )
 
-    error = np.sqrt((property - prediction) ** 2)
-    properties = {}
+    error = np.abs(properties - prediction)
+    result = {}
     for name, values in _linearize("projection", projection).items():
-        properties[name] = {"target": target, "values": values}
+        result[name] = {"target": target, "values": values}
 
-    for name, values in _linearize(property_name, property).items():
-        properties[name] = {"target": target, "values": values}
+    for i, property_name in enumerate(property_names):
+        for name, values in _linearize(property_name, properties[:, i]).items():
+            result[name] = {"target": target, "values": values}
 
-    for name, values in _linearize("predicted {}".format(property_name), prediction).items():
-        properties[name] = {"target": target, "values": values}
+        for name, values in _linearize("predicted {}".format(property_name), prediction[:, i]).items():
+            result[name] = {"target": target, "values": values}
 
-    for name, values in _linearize("{} error".format(property_name), error).items():
-        properties[name] = {"target": target, "values": values}
+        for name, values in _linearize("{} error".format(property_name), error[:, i]).items():
+            result[name] = {"target": target, "values": values}
 
-    data['properties'] = properties
+    data['properties'] = result
     data['structures'] = [_frame_to_json(frame) for frame in frames]
 
     if cutoff is not None:
