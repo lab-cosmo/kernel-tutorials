@@ -74,17 +74,25 @@ def get_Ct(X, Y, alpha=0.5, regularization=1e-6):
 
     cov = X.T @ X
 
-    # changing these next two lines can cause a LARGE error
-    Csqrt = scipy.linalg.sqrtm(cov)
-    Cinv = np.linalg.pinv(cov, hermitian=True)
+    if(alpha < 1.0):
+        # changing these next two lines can cause a LARGE error
+        Cinv = np.linalg.pinv(cov, hermitian=True)
+        try:
+            Csqrt = scipy.linalg.sqrtm(cov)
+        except:
+            v, U = sorted_eig(cov)
+            Csqrt = U @ np.diagflat(np.sqrt(v)) @ U.T
 
-    # parentheses speed up calculation greatly
-    Y_hat = Csqrt @ Cinv @ (X.T @ Y)
+        # parentheses speed up calculation greatly
+        Y_hat = Csqrt @ Cinv @ (X.T @ Y)
 
-    if(len(Y_hat.shape) < 2):
-        Y_hat = Y_hat.reshape((-1, 1))
+        if(len(Y_hat.shape) < 2):
+            Y_hat = Y_hat.reshape((-1, 1))
 
-    C_lr = Y_hat @ Y_hat.T
+        C_lr = Y_hat @ Y_hat.T
+
+    else:
+        C_lr = np.zeros(cov.shape)
 
     C_pca = cov
     C = alpha*C_pca + (1.0-alpha)*C_lr
@@ -139,37 +147,38 @@ def pcovr_select(A, n, Y, alpha, k=1, idxs=None, sps=False, **kwargs):
     else:
         idxs = list(idxs)
 
-    for nn in tqdm(range(n)):
-        if(len(idxs) <= nn):
+    try:
+        for nn in tqdm(range(n)):
+            if(len(idxs) <= nn):
 
-            Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
+                Ct = get_Ct(Acopy, Ycopy, alpha=alpha)
 
-            if(not sps):
-                v_Ct, U_Ct = sorted_eig(Ct, n=k)
-            else:
-                v_Ct, U_Ct = speig(Ct, k)
-                U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
+                if(not sps):
+                    v_Ct, U_Ct = sorted_eig(Ct, n=k)
+                else:
+                    v_Ct, U_Ct = speig(Ct, k)
+                    U_Ct = U_Ct[:, np.flip(np.argsort(v_Ct))]
 
-            pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
-            pi[idxs] = 0  # eliminate possibility of selecting same column twice
-            j = pi.argmax()
-            idxs.append(j)
+                pi = (np.real(U_Ct)[:, :k]**2.0).sum(axis=1)
+                pi[idxs] = 0  # eliminate possibility of selecting same column twice
+                j = pi.argmax()
+                idxs.append(j)
 
-        v = np.linalg.pinv(
-            np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
-        v = np.matmul(Acopy[:, idxs[:nn+1]], v)
-        v = np.matmul(v, Acopy[:, idxs[:nn+1]].T)
+            v = np.linalg.pinv(
+                np.matmul(Acopy[:, idxs[:nn+1]].T, Acopy[:, idxs[:nn+1]]))
+            v = np.matmul(Acopy[:, idxs[:nn+1]], v)
+            v = np.matmul(v, Acopy[:, idxs[:nn+1]].T)
 
-        Ycopy -= np.matmul(v, Ycopy)
+            Ycopy -= np.matmul(v, Ycopy)
 
-        v = Acopy[:, idxs[nn]] / \
-            np.sqrt(np.matmul(Acopy[:, idxs[nn]], Acopy[:, idxs[nn]]))
-
-
-        for i in range(Acopy.shape[1]):
-            Acopy[:, i] -= v * np.dot(v, Acopy[:, i])
+            v = Acopy[:, idxs[nn]] / \
+                np.sqrt(np.matmul(Acopy[:, idxs[nn]], Acopy[:, idxs[nn]]))
 
 
+            for i in range(Acopy.shape[1]):
+                Acopy[:, i] -= v * np.dot(v, Acopy[:, i])
+    except:
+        print("INCOMPLETE AT {}/{}".format(len(idxs), n))
 
     return list(idxs)
 
