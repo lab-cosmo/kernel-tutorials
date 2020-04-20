@@ -31,6 +31,8 @@ class Model:
 
         self.center = center
         self.scale = scale
+        self.X_center = None
+        self.X_scale = None
 
         # self.X_center = 0
         # self.Y_center = 0
@@ -39,7 +41,7 @@ class Model:
         # self.K_ref = None
 
     def preprocess(self, X=None, Y=None, K=None,
-                   X_ref=None, Y_ref=None, K_ref=None,
+                   X_ref=None, Y_ref=None, K_ref=None, rcond=1.0E-15,
                    *args, **kwargs):
         """
         Scale and center the input data as designated by the model parameters
@@ -56,24 +58,27 @@ class Model:
             Y_ref = Y.copy()
 
         if self.center:
-            if X_ref is not None:
+            if X_ref is not None and self.X_center is None:
                 self.X_center = X_ref.mean(axis=0)
 
-            if Y_ref is not None:
-                self.Y_center = Y_ref.mean(axis=0)
+            if isinstance(self, Regression):
+                if Y_ref is not None and self.Y_center is None:
+                    self.Y_center = Y_ref.mean(axis=0)
 
-            if not hasattr(self, 'K_ref'):
-                if K_ref is None:
+            if isinstance(self, Kernelized):
+                if K_ref is None and K is not None:
                     K_ref = K
 
-                self.K_ref = K_ref
+                if K_ref is not None and self.K_ref is None:
+                    self.K_ref = K_ref
 
         if self.scale:
-            if X_ref is not None:
+            if X_ref is not None and self.X_scale is None:
                 self.X_scale = np.linalg.norm(X_ref - self.X_center) / np.sqrt(X_ref.shape[0])
 
-            if Y_ref is not None:
-                self.Y_scale = np.linalg.norm(Y_ref - self.Y_center, axis=0) / np.sqrt(Y_ref.shape[0] / Y_ref.shape[1])
+            if isinstance(self, Regression):
+                if Y_ref is not None and self.Y_scale is None:
+                    self.Y_scale = np.linalg.norm(Y_ref - self.Y_center, axis=0) / np.sqrt(Y_ref.shape[0] / Y_ref.shape[1])
 
         if X is not None:
             Xcopy = X.copy()
@@ -95,8 +100,22 @@ class Model:
 
         if K is not None:
             Kcopy = K.copy()
-            if self.center:
+            if self.center and isinstance(self, Sparsified):
+                K_center = np.mean(self.K_ref, axis=0)
+                Kcopy = center_matrix(Kcopy, K_center)
+            elif self.center:
                 Kcopy = center_kernel(Kcopy, reference=self.K_ref)
+            if self.scale and isinstance(self, Sparsified):
+                try:
+                    K_ref_centered = self.K_ref - np.mean(self.K_ref, axis=0)
+                    self.K_scale = K_ref_centered @ np.linalg.pinv(self.Kmm, rcond=rcond) @ K_ref_centered.T
+                    self.K_scale = np.sqrt(np.trace(self.K_scale) / self.K_ref.shape[0])
+                    Kcopy = normalize_matrix(Kcopy, scale=self.K_scale)
+                except AttributeError:
+                    print("Error: Kmm is required for the scaling but it has not been set")
+            elif self.scale:
+                self.K_scale = np.trace(center_kernel(self.K_ref)) / self.K_ref.shape[0]
+                Kcopy = normalize_matrix(Kcopy, scale=self.K_scale)
         else:
             Kcopy = None
 
@@ -109,19 +128,19 @@ class Model:
 
         if X is not None:
             Xcopy = X.copy()
-            if self.center:
-                Xcopy = center_matrix(Xcopy, -self.X_center)
             if self.scale:
                 Xcopy = normalize_matrix(Xcopy, scale=(1.0 / self.X_scale))
+            if self.center:
+                Xcopy = center_matrix(Xcopy, -self.X_center)
         else:
             Xcopy = None
 
         if Y is not None:
             Ycopy = Y.copy()
-            if self.center:
-                Ycopy = center_matrix(Ycopy, -self.Y_center)
             if self.scale:
                 Ycopy = normalize_matrix(Ycopy, scale=(1.0 / self.Y_scale))
+            if self.center:
+                Ycopy = center_matrix(Ycopy, -self.Y_center)
         else:
             Ycopy = None
 
@@ -180,6 +199,8 @@ class Regression(Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.PXY = None
+        self.Y_center = None
+        self.Y_scale = None
 
 
 class Kernelized(Model):
@@ -227,6 +248,8 @@ class Kernelized(Model):
         self.PTK = None
         self.PKY = None
         self.X = None
+        self.K_ref = None
+        self.K_scale = None
 
 
 class Sparsified(Kernelized):
@@ -679,8 +702,7 @@ class SparseKPCA(Sparsified, Decomposition):
     def fit(self, X, Kmm=None, Knm=None, *args, **kwargs):
         # *args left in for backwards compatibility
 
-        X, _, Knm = self.preprocess(X=X, X_ref=X, K=Knm, K_ref=Kmm)
-        _, _, Kmm = self.preprocess(K=Kmm, K_ref=Kmm)
+        X, _, _ = self.preprocess(X=X, X_ref=X)
 
         if Kmm is None or Knm is None:
             i_sparse, _ = FPS(X, self.n_active)
@@ -688,13 +710,13 @@ class SparseKPCA(Sparsified, Decomposition):
             self.X_sparse = X[i_sparse, :]
 
             Kmm = self.kernel(self.X_sparse, self.X_sparse)
-            Kmm = center_kernel(Kmm)
 
             Knm = self.kernel(X, self.X_sparse)
-            Knm = center_kernel(Knm, Kmm)
 
         self.Kmm = Kmm
-        self.barKM = np.mean(Knm, axis=0)
+        if self.center:
+            self.Kmm = center_kernel(self.Kmm)
+        _, _, Knm = self.preprocess(K=Knm, K_ref=Knm)
 
         # Compute eigendecomposition of kernel
         vmm, Umm = sorted_eig(
@@ -704,7 +726,7 @@ class SparseKPCA(Sparsified, Decomposition):
         v_invsqrt = np.diagflat(np.sqrt(eig_inv(vmm[0:self.n_active - 1])))
         U_active = U_active @ v_invsqrt
 
-        phi_active = (Knm - self.barKM) @ U_active
+        phi_active = Knm @ U_active
 
         C = phi_active.T @ phi_active
 
@@ -712,7 +734,7 @@ class SparseKPCA(Sparsified, Decomposition):
             C, thresh=self.regularization, n=self.n_active)
 
         self.PKT = U_active @ U_C[:, :self.n_PC]
-        T = (Knm - self.barKM) @ self.PKT
+        T = Knm @ self.PKT
         self.PTX = np.diagflat(eig_inv(v_C[:self.n_PC])) @ T.T @ X
 
     def transform(self, X, Knm=None):
@@ -723,10 +745,10 @@ class SparseKPCA(Sparsified, Decomposition):
         else:
             if Knm is None and self.X_sparse is not None:
                 Knm = self.kernel(X, self.X_sparse)
-                Knm = center_kernel(Knm, reference=self.Kmm)
+                _, _, Knm = self.preprocess(K=Knm)
 
             # Compute KPCA transformation
-            T = (Knm - self.barKM) @ self.PKT
+            T = Knm @ self.PKT
 
             return T
 
@@ -736,6 +758,7 @@ class SparseKPCA(Sparsified, Decomposition):
 
         if K_test is None:
             K_test = self.kernel(X, X)
+            # TODO: need to change this for the new centering?
             K_test = center_kernel(K_test)
 
         Xr = T @ self.PTX
@@ -788,7 +811,7 @@ class SparseKRR(Sparsified, Regression):
         super(SparseKRR, self).__init__(*args, **kwargs)
 
     def fit(self, X, Y, Kmm=None, Knm=None):
-        X, Y, Knm = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y, K=Knm, K_ref=Kmm)
+        X, Y, _ = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y)
 
         if Kmm is None or Knm is None:
             i_sparse, _ = FPS(X, self.n_active)
@@ -797,13 +820,14 @@ class SparseKRR(Sparsified, Regression):
 
         if Kmm is None:
             Kmm = self.kernel(self.X_sparse, self.X_sparse)
-            Kmm = center_kernel(Kmm)
-
-        self.Kmm = Kmm
 
         if Knm is None:
             Knm = self.kernel(X, self.X_sparse)
-            Knm = center_kernel(Knm, Kmm)
+
+        self.Kmm = Kmm
+        if self.center:
+            self.Kmm = center_kernel(self.Kmm)
+        _, _, Knm = self.preprocess(K=Knm, K_ref=Knm)
 
         # Compute max eigenvalue of regularized model
         PKY = np.linalg.pinv(Knm.T @ Knm + (self.regularization * Kmm))
@@ -817,6 +841,7 @@ class SparseKRR(Sparsified, Regression):
         else:
             if Knm is None:
                 Knm = self.kernel(X, self.X_sparse)
+                _, _, Knm = self.preprocess(K=Knm)
 
             Yp = Knm @ self.PKY
             _, Yp = self.postprocess(Y=Yp)
@@ -1270,7 +1295,7 @@ class SparseKPCovR(PCovRBase, Sparsified):
         super(SparseKPCovR, self).__init__(n_PC=n_PC, *args, **kwargs)
 
     def fit(self, X, Y, X_sparse=None, Kmm=None, Knm=None):
-        X, Y, Knm = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y, K=Knm, K_ref=Kmm)
+        X, Y, _ = self.preprocess(X=X, X_ref=X, Y=Y, Y_ref=Y)
 
         if X_sparse is None:
             fps_idxs, _ = FPS(X, self.n_active)
@@ -1280,26 +1305,21 @@ class SparseKPCovR(PCovRBase, Sparsified):
 
         if Kmm is None:
             Kmm = self.kernel(self.X_sparse, self.X_sparse)
-            self.Kmm = Kmm
-            Kmm = center_kernel(Kmm)
-        else:
-            self.Kmm = Kmm
+
+        self.Kmm = Kmm
+        if self.center:
+            self.Kmm = center_kernel(Kmm)
 
         if Knm is None:
             Knm = self.kernel(X, self.X_sparse)
-            Knm = center_kernel(Knm, reference=self.Kmm)
-        self.Knm = Knm
+
+        _, _, self.Knm = self.preprocess(K=Knm, K_ref=Knm)
 
         vmm, Umm = sorted_eig(
             Kmm, thresh=self.regularization, n=self.n_active)
         vmm_inv = eig_inv(vmm[:self.n_active - 1])
 
-        self.barKM = np.mean(self.Knm, axis=0)
-
         phi_active = self.Knm @ Umm[:, :self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
-
-        barPhi = np.mean(phi_active, axis=0)
-        phi_active -= barPhi
 
         C = phi_active.T @ phi_active
 
@@ -1332,9 +1352,8 @@ class SparseKPCovR(PCovRBase, Sparsified):
         PKT = Umm[:, :self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
 
         self.PKT = PKT @ PPT
-        self.barT = barPhi @ PPT
 
-        T = (self.Knm @ self.PKT) - self.barT
+        T = self.Knm @ self.PKT
 
         PT = np.linalg.pinv(T.T @ T) @ T.T
         self.PTY = PT @ Y
@@ -1348,9 +1367,9 @@ class SparseKPCovR(PCovRBase, Sparsified):
         else:
             if Knm is None:
                 Knm = self.kernel(X, self.X_sparse)
-                Knm = center_kernel(Knm, reference=self.Kmm)
+                _, _, Knm = self.preprocess(K=Knm)
 
-            T = (Knm @ self.PKT) - self.barT
+            T = Knm @ self.PKT
             Yp = T @ self.PTY
             Xr = T @ self.PTX
 
@@ -1361,7 +1380,7 @@ class SparseKPCovR(PCovRBase, Sparsified):
     def loss(self, X, Y, Knm=None):
         if Knm is None:
             Knm = self.kernel(X, self.X_sparse)
-            Knm = center_kernel(Knm, reference=self.Kmm)
+            Knm -= np.mean(self.K_ref, axis=0)
 
         T, Yp, Xr = self.transform(X, Knm=Knm)
 
@@ -1373,7 +1392,7 @@ class SparseKPCovR(PCovRBase, Sparsified):
     def statistics(self, X, Y, Knm=None):
         if Knm is None:
             Knm = self.kernel(X, self.X_sparse)
-            Knm = center_kernel(Knm, reference=self.Kmm)
+            Knm -= np.mean(self.K_ref, axis=0)
 
         T, Yp, Xr = self.transform(X, Knm=Knm)
 
