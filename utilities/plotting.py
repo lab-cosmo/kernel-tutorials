@@ -9,7 +9,7 @@ plt.style.use('{}/kernel_pcovr.mplstyle'.format(utils_dir))
 
 
 def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
-              cbar_title="", cb_orientation='vertical', cb_ax = None,
+              cbar_title="", cb_orientation='vertical', cb_ax = None, rasterized=True,
               **kwargs):
     """
         Base class for all plotting utilities
@@ -32,6 +32,7 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
 
     p = ax.scatter(scatter_points[:, 0],
                    scatter_points[:, 1],
+                   rasterized=rasterized,
                    **kwargs
                    )
 
