@@ -41,7 +41,7 @@ class Model:
         # self.K_ref = None
 
     def preprocess(self, X=None, Y=None, K=None,
-                   X_ref=None, Y_ref=None, K_ref=None, rcond=1.0E-15,
+                   X_ref=None, Y_ref=None, K_ref=None, rcond=1.0E-12,
                    *args, **kwargs):
         """
         Scale and center the input data as designated by the model parameters
@@ -713,9 +713,9 @@ class SparseKPCA(Sparsified, Decomposition):
 
             Knm = self.kernel(X, self.X_sparse)
 
-        self.Kmm = Kmm
         if self.center:
-            self.Kmm = center_kernel(self.Kmm)
+            Kmm = center_kernel(Kmm)
+        self.Kmm = Kmm
         _, _, Knm = self.preprocess(K=Knm, K_ref=Knm)
 
         # Compute eigendecomposition of kernel
@@ -824,9 +824,9 @@ class SparseKRR(Sparsified, Regression):
         if Knm is None:
             Knm = self.kernel(X, self.X_sparse)
 
-        self.Kmm = Kmm
         if self.center:
-            self.Kmm = center_kernel(self.Kmm)
+            Kmm = center_kernel(Kmm)
+        self.Kmm = Kmm
         _, _, Knm = self.preprocess(K=Knm, K_ref=Knm)
 
         # Compute max eigenvalue of regularized model
@@ -1306,9 +1306,9 @@ class SparseKPCovR(PCovRBase, Sparsified):
         if Kmm is None:
             Kmm = self.kernel(self.X_sparse, self.X_sparse)
 
-        self.Kmm = Kmm
         if self.center:
-            self.Kmm = center_kernel(Kmm)
+            Kmm = center_kernel(Kmm)
+        self.Kmm = Kmm
 
         if Knm is None:
             Knm = self.kernel(X, self.X_sparse)
