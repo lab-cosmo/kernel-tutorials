@@ -43,11 +43,11 @@ class cbarHot(cbar):
         Class to make the custom 'cbarHot' COSMO colorbar
     """
 
-    def __init__(self):
+    def __init__(self, mn=0.0, mx=1.0):
 
         # 5th degree polynomial fit to the individual RGB values of the
         # Mathematica COSMO colorbar at 1000 sample points
-        x = np.linspace(0.0, 1.0, 100)
+        x = np.linspace(mn, mx, 100)
 
         # R, G, B value polynomial coefficients in decreasing order
         r = np.array([28.384, -66.085, 54.494, -16.557, -0.232, 0.991])
@@ -66,7 +66,10 @@ class cbarHot(cbar):
             i[np.where(i < 0.0)] = 0.0
 
         # Build colormap and register it with Matplotlib
-        self.make_cbar('cbarHot', np.column_stack((pr, pg, pb)))
+        cbar_name = 'cbarHot'
+        if(mn!=0 or mx!=1.0):
+            cbar_name +='_{}_{}'.format(mn, mx)
+        self.make_cbar(cbar_name, np.column_stack((pr, pg, pb)))
 
 
 class cbarHot_alt(cbar):
@@ -77,10 +80,10 @@ class cbarHot_alt(cbar):
         but is similar.
     """
 
-    def __init__(self):
+    def __init__(self, mn=0.0, mx=1.0):
 
         # Build color bar on 1000 sample points
-        x = np.linspace(0.0, 1.0, 1000)
+        x = np.linspace(mn, mx, 1000)
 
         # Extract 1000 sample points from existing color bar
         # Only use partial segment of the colorbar (0.0 to 0.8)
@@ -109,8 +112,10 @@ class cbarHot_alt(cbar):
             + np.einsum('ij,i->ij', rgb1, c2)
 
         # Build the colormap and register it with Matplotlib
-        self.cbar = LinearSegmentedColormap.from_list('cbarHot', blend3)
-        plt.register_cmap(cmap=self.cbar)
+        cbar_name = 'cbarHot'
+        if(mn!=0 or mx!=1.0):
+            cbar_name +='_{}_{}'.format(mn, mx)
+        self.make_cbar(cbar_name, blend3)
 
 
 class cbarBWR(cbar):
@@ -120,10 +125,10 @@ class cbarBWR(cbar):
         (in my opinion) looks a little nicer: 'RdBu'
     """
 
-    def __init__(self):
+    def __init__(self, mn=0.0, mx=1.0):
 
         # Build colorbar using 1000 sample points
-        x = np.linspace(0.0, 1.0, 1000)
+        x = np.linspace(mn, mx, 1000)
 
         # RGB values
         rgbBlack = np.array([0.0, 0.0, 0.0])*np.ones((1000, 3))
@@ -153,8 +158,11 @@ class cbarBWR(cbar):
             + np.einsum('ij,i->ij', rgbBlack, c4)
 
         # Build the colormap and register it with Matplotlib
-        self.cbar = LinearSegmentedColormap.from_list('cbarBWR', blend)
-        plt.register_cmap(cmap=self.cbar)
+        cbar_name = 'cbarBWR'
+        if(mn!=0 or mx!=1.0):
+            cbar_name +='_{}_{}'.format(mn, mx)
+
+        self.make_cbar(cbar_name, blend)
 
 
 class cbarPhi(cring):
@@ -162,10 +170,10 @@ class cbarPhi(cring):
         Class to make custom COSMO periodic colorbar
     """
 
-    def __init__(self):
+    def __init__(self, mn=0.0, mx=1.0):
 
         # Build colorbar using 1000 sample points
-        x = np.linspace(0.0, 1.0, 1000)
+        x = np.linspace(mn, mx, 1000)
 
         # RGB values
         rgbBlack = np.array([0.0, 0.0, 0.0])*np.ones((1000, 3))
@@ -193,10 +201,14 @@ class cbarPhi(cring):
             np.einsum('ij,i->ij', rgb2, c4)
 
         # Build the colormap and register it with Matplotlib
-        self.cbar = LinearSegmentedColormap.from_list('cbarPhi', blend)
-        plt.register_cmap(cmap=self.cbar)
+        cbar_name = 'cbarPhi'
+        if(mn!=0 or mx!=1.0):
+            cbar_name +='_{}_{}'.format(mn, mx)
+
+        self.make_cbar(cbar_name, blend)
 
 
 def load():
-    for cb in [cbarHot, cbarHot_alt, cbarBWR, cbarPhi]:
-        cb()
+    for cb in [cbarHot, cbarBWR, cbarPhi]:
+        cb(mn=0.0, mx=1.0)
+    cbarHot(mn=0.3, mx=1.05)
