@@ -208,7 +208,27 @@ class cbarPhi(cring):
         self.make_cbar(cbar_name, blend)
 
 
+class cbarMPLtrunc(cbar):
+
+    def __init__(self, mpl_cmap='jet', mn=0.0, mx=1.0):
+
+        # Build colorbar using 1000 sample points
+        x = np.linspace(mn, mx, 1000)
+        cmap = mpl.cm.get_cmap(mpl_cmap)
+
+        blend = np.array([cmap(xx) for xx in x])
+
+        # Build the colormap and register it with Matplotlib
+        cbar_name = mpl_cmap
+        if(mn!=0 or mx!=1.0):
+            cbar_name +='_{}_{}'.format(mn, mx)
+
+            self.make_cbar(cbar_name, blend)
+
 def load():
     for cb in [cbarHot, cbarBWR, cbarPhi]:
         cb(mn=0.0, mx=1.0)
     cbarHot(mn=0.3, mx=1.05)
+    cbarMPLtrunc('bone_r',0.2, 1.0)
+    cbarMPLtrunc('Reds',0.3, 1.0)
+    cbarMPLtrunc('Blues',0.3, 1.0)
