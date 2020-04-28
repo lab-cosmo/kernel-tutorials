@@ -62,7 +62,11 @@ def _generate_environments(frames, cutoff):
     return environments
 
 
-def chemiscope_input(meta, frames, projection, prediction, properties, property_names=None, cutoff=None):
+def chemiscope_input(meta, frames, projection, prediction,
+                     properties, property_names=None,
+                     untrained_properties=None, untrained_property_names=None,
+                     cutoff=None,
+                    ):
     '''
     Get a dictionary which can be saved as JSON and used as input data for the
     chemiscope visualizer (https://chemiscope.org).
@@ -79,6 +83,9 @@ def chemiscope_input(meta, frames, projection, prediction, properties, property_
     :param array properties: actual value for properties for all environments in
                            the frames
     :param list property_names: name of the properties being considered
+    :param array untrained_properties: actual value for properties for all environments in
+      the frames that are not included in the regression
+    :param list untrained_property_names: name of the untrained properties being considered
     :param float cutoff: optional. If present, will be used to generate
                          atom-centered environments
 
@@ -130,6 +137,11 @@ def chemiscope_input(meta, frames, projection, prediction, properties, property_
 
         for name, values in _linearize("{} error".format(property_name), error[:, i]).items():
             result[name] = {"target": target, "values": values}
+
+    if(untrained_property_names is not None):
+        for i, property_name in enumerate(untrained_property_names):
+            for name, values in _linearize(property_name, untrained_properties[:, i]).items():
+                result[name] = {"target": target, "values": values}
 
     data['properties'] = result
     data['structures'] = [_frame_to_json(frame) for frame in frames]
