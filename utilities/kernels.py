@@ -33,20 +33,65 @@ def summed_kernel(XA, XB, kernel_func, **kwargs):
 
     return K
 
+def self_gaussian_kernel(XA, fps_compute=None, gamma=1.0):
+        """
+        Build a Gaussian kernel between all samples in XA
+        """
+        K = np.zeros((len(XA), len(XA)))
 
-def gaussian_kernel(XA, XB, gamma=1.0):
+        flag_A = len(XA.shape)==1
+
+        # XA structures
+        if flag_A:
+            for idx_i in range(len(XA)):
+                for idx_j in range(idx_i, len(XA)):
+                    kij = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XA[idx_j][:, fps_compute], metric="sqeuclidean"))
+                    K[idx_i, idx_j] = K[idx_j, idx_i] = kij.mean()
+
+        # XA environments
+        else:
+            K = np.exp(-gamma*cdist(XA, XA, metric="sqeuclidean"))
+
+{value for value in variable}        return K
+
+def gaussian_kernel(XA, XB=None, fps_compute=None, gamma=1.0):
     """
-        Builds a gaussian kernel of the type k(x, x') = np.exp(-gamma*(x-x'))
-
-        ---Arguments---
-        XA, XB: vectors of data from which to build the kernel,
-            where each row is a sample and each column is a feature
-
-        ---Returns---
-        K: gaussian kernel between XA and XB
+    Build a Gaussian kernel between all samples in XA,
+    or between XA and XB (if provided)
     """
-    D = cdist(XA, XB, metric='sqeuclidean')
-    return np.exp(-D*gamma)
+    flag_A = len(XA.shape)==1
+    flag_B = XB is None or len(XB.shape)==1
+
+    if(XB is None):
+        return self_gaussian_kernel(XA, gamma=gamma)
+
+    else:
+        K = np.zeros((len(XA), len(XB)))
+
+        # XA and XB structures
+        if flag_A and flag_B:
+            for idx_i in range(len(XA)):
+                for idx_j in (range(len(XB))):
+                    ki = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XB[idx_j][:, fps_compute], metric="sqeuclidean"))
+                    K[idx_i, idx_j] = ki.mean()
+
+        # XA structures, XB environments
+        elif flag_A:
+            for idx_i in tqdm(range(len(XA))):
+                ki = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XB[:, fps_compute], metric="sqeuclidean"))
+                K[idx_i, :] = ki.mean(axis=0)
+
+        # XA environments, XB structures
+        elif flag_B:
+            for idx_j in tqdm(range(len(XB))):
+                kj = np.exp(-gamma*cdist(XA[:, fps_compute], XB[idx_j][:, fps_compute], metric="sqeuclidean"))
+                K[:, idx_j] = ki.mean(axis=1)
+
+        # XA and XB environments
+        else:
+            K = np.exp(-gamma*cdist(XA[:, fps_compute], XB[:, fps_compute], metric="sqeuclidean"))
+
+        return K
 
 
 def center_kernel(K, reference=None, ref_cmean=None, ref_rmean=None, ref_mean=None):
