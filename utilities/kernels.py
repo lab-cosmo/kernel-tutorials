@@ -33,7 +33,7 @@ def summed_kernel(XA, XB, kernel_func, **kwargs):
 
     return K
 
-def self_gaussian_kernel(XA, fps_compute=None, gamma=1.0):
+def self_gaussian_kernel(XA, feat_idx=None, gamma=1.0):
         """
         Build a Gaussian kernel between all samples in XA
         """
@@ -45,16 +45,16 @@ def self_gaussian_kernel(XA, fps_compute=None, gamma=1.0):
         if flag_A:
             for idx_i in tqdm(range(len(XA))):
                 for idx_j in range(idx_i, len(XA)):
-                    kij = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XA[idx_j][:, fps_compute], metric="sqeuclidean"))
+                    kij = np.exp(-gamma*cdist(XA[idx_i][:, feat_idx], XA[idx_j][:, feat_idx], metric="sqeuclidean"))
                     K[idx_i, idx_j] = K[idx_j, idx_i] = kij.mean()
 
         # XA environments
         else:
             K = np.exp(-gamma*cdist(XA, XA, metric="sqeuclidean"))
 
-{value for value in variable}        return K
+        return K
 
-def gaussian_kernel(XA, XB=None, fps_compute=None, gamma=1.0):
+def gaussian_kernel(XA, XB=None, feat_idx=None, gamma=1.0):
     """
     Build a Gaussian kernel between all samples in XA,
     or between XA and XB (if provided)
@@ -63,7 +63,7 @@ def gaussian_kernel(XA, XB=None, fps_compute=None, gamma=1.0):
     flag_B = XB is None or len(XB.shape)==1
 
     if(XB is None):
-        return self_gaussian_kernel(XA, gamma=gamma)
+        return self_gaussian_kernel(XA, feat_idx=feat_idx, gamma=gamma)
 
     else:
         K = np.zeros((len(XA), len(XB)))
@@ -72,24 +72,24 @@ def gaussian_kernel(XA, XB=None, fps_compute=None, gamma=1.0):
         if flag_A and flag_B:
             for idx_i in tqdm(range(len(XA))):
                 for idx_j in (range(len(XB))):
-                    ki = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XB[idx_j][:, fps_compute], metric="sqeuclidean"))
+                    ki = np.exp(-gamma*cdist(XA[idx_i][:, feat_idx], XB[idx_j][:, feat_idx], metric="sqeuclidean"))
                     K[idx_i, idx_j] = ki.mean()
 
         # XA structures, XB environments
         elif flag_A:
             for idx_i in tqdm(range(len(XA))):
-                ki = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XB[:, fps_compute], metric="sqeuclidean"))
+                ki = np.exp(-gamma*cdist(XA[idx_i][:, feat_idx], XB[:, feat_idx], metric="sqeuclidean"))
                 K[idx_i, :] = ki.mean(axis=0)
 
         # XA environments, XB structures
         elif flag_B:
             for idx_j in tqdm(range(len(XB))):
-                kj = np.exp(-gamma*cdist(XA[:, fps_compute], XB[idx_j][:, fps_compute], metric="sqeuclidean"))
+                kj = np.exp(-gamma*cdist(XA[:, feat_idx], XB[idx_j][:, feat_idx], metric="sqeuclidean"))
                 K[:, idx_j] = ki.mean(axis=1)
 
         # XA and XB environments
         else:
-            K = np.exp(-gamma*cdist(XA[:, fps_compute], XB[:, fps_compute], metric="sqeuclidean"))
+            K = np.exp(-gamma*cdist(XA[:, feat_idx], XB[:, feat_idx], metric="sqeuclidean"))
 
         return K
 
