@@ -43,7 +43,7 @@ def self_gaussian_kernel(XA, feat_idx=None, gamma=1.0):
 
         # XA structures
         if flag_A:
-            for idx_i in tqdm(range(len(XA))):
+            for idx_i in range(len(XA)):
                 for idx_j in range(idx_i, len(XA)):
                     kij = np.exp(-gamma*cdist(XA[idx_i][:, feat_idx], XA[idx_j][:, feat_idx], metric="sqeuclidean"))
                     K[idx_i, idx_j] = K[idx_j, idx_i] = kij.mean()
@@ -70,20 +70,20 @@ def gaussian_kernel(XA, XB=None, feat_idx=None, gamma=1.0):
 
         # XA and XB structures
         if flag_A and flag_B:
-            for idx_i in tqdm(range(len(XA))):
+            for idx_i in range(len(XA)):
                 for idx_j in (range(len(XB))):
                     ki = np.exp(-gamma*cdist(XA[idx_i][:, feat_idx], XB[idx_j][:, feat_idx], metric="sqeuclidean"))
                     K[idx_i, idx_j] = ki.mean()
 
         # XA structures, XB environments
         elif flag_A:
-            for idx_i in tqdm(range(len(XA))):
+            for idx_i in range(len(XA)):
                 ki = np.exp(-gamma*cdist(XA[idx_i][:, feat_idx], XB[:, feat_idx], metric="sqeuclidean"))
                 K[idx_i, :] = ki.mean(axis=0)
 
         # XA environments, XB structures
         elif flag_B:
-            for idx_j in tqdm(range(len(XB))):
+            for idx_j in range(len(XB)):
                 kj = np.exp(-gamma*cdist(XA[:, feat_idx], XB[idx_j][:, feat_idx], metric="sqeuclidean"))
                 K[:, idx_j] = ki.mean(axis=1)
 
