@@ -30,6 +30,10 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
     if(ax is None or fig is None):
         fig, ax = plt.subplots(1, figsize=plt.rcParams['figure.figsize'])
 
+    cb_args = kwargs.get('cb_args', {})
+    if('cb_args' in kwargs):
+        kwargs.pop('cb_args')
+
     p = ax.scatter(scatter_points[:, 0],
                    scatter_points[:, 1],
                    rasterized=rasterized,
@@ -37,14 +41,15 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
                    )
 
     if('cmap' in kwargs and cbar==True):
-        cb_args = {}
+
         if(cb_ax is None):
             cb_args['ax'] = ax
-            cb_args['fraction'] = 0.4
+            cb_args['fraction'] = cb_args.get('fraction', 0.4)
         else:
             cb_args['cax'] = cb_ax
-            cb_args['fraction'] = 1.0
-        # pad=0.05, fraction = 0.04
+            cb_args['fraction'] = cb_args.get('fraction', 1.0)
+
+        print(cb_args['fraction'])
 
         cbar = fig.colorbar(p, **cb_args,
                             orientation=cb_orientation,
@@ -119,6 +124,7 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
                     bounds = np.array([kwargs['vmin'], kwargs['vmax']]).T
                     kwargs.pop('vmin'); kwargs.pop('vmax');
 
+                bounds = bounds[:2]
                 colormap = kwargs['cmap2D'](*bounds)
                 kwargs['c'] = [colormap(y) for y in Y]
             elif('colormap' in kwargs):
