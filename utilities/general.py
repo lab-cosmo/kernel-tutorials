@@ -4,13 +4,14 @@ from sklearn.metrics import r2_score as calc_R2
 from .kernels import gaussian_kernel, center_kernel
 
 
-def eig_inv(v):
-    """ A more robust way to find the inverse eigenvalues """
-    return np.array([np.linalg.pinv([[vv]])[0][0] for vv in v])
+def eig_inv(v, rcond=1e-14):
+    """ Inverse of a list (typically of eigenvalues) with thresholding à la pinv """
+    thresh = v.max() * rcond
+    return np.array([(1/vv if vv>thresh else 0.0) for vv in v])
 
 
 def normalize_matrix(A, scale=None):
-    """ Normalize a matrix so that it has unit variance """
+    """ Normalize a matrix so that its entries have unit variance """
     if scale is None:
         scale = np.linalg.norm(A) / np.sqrt(len(A))
     return A / scale
