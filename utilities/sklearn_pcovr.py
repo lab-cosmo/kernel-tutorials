@@ -311,8 +311,8 @@ class PCovR(_BasePCovR):
         else:
             v, U = np.linalg.eig(matrix)
 
-        U = U[:, np.argsort(v)]
-        v = v[np.argsort(v)]
+        U = np.real(U[:, np.argsort(v)])
+        v = np.real(v[np.argsort(v)])
 
         U = U[:, v > self.tol]
         v = v[v > self.tol]
