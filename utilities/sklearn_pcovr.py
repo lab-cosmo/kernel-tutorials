@@ -336,7 +336,7 @@ class _BasePCovR():
             Returns the instance itself.
         """
 
-    def transform(self, X):
+    def _transform(self, X, projector):
         """Apply dimensionality reduction to X.
 
         X is projected on the first principal components previously extracted
@@ -347,6 +347,7 @@ class _BasePCovR():
         X : array-like, shape (n_samples, n_features)
             New data, where n_samples is the number of samples
             and n_features is the number of features.
+        projector: projection matrix
 
         Returns
         -------
@@ -362,13 +363,13 @@ class _BasePCovR():
         X = check_array(X)
         # if self.mean_ is not None: # TODO with scaling
         #     X = X - self.mean_
-        X_transformed = np.dot(X, self.components_.T)
+        X_transformed = np.dot(X, projector)
         # if self.whiten:
         #     X_transformed /= np.sqrt(self.explained_variance_)
         return X_transformed
 
 
-    def inverse_transform(self, X):
+    def _inverse_transform(self, T, projector):
         """Transform data back to its original space.
 
         In other words, return an input X_original whose transform would be X.
@@ -378,6 +379,7 @@ class _BasePCovR():
         X : array-like, shape (n_samples, n_components)
             New data, where n_samples is the number of samples
             and n_components is the number of components.
+        projector: projecton matrix
 
         Returns
         -------
@@ -389,11 +391,12 @@ class _BasePCovR():
         If whitening is enabled, inverse_transform will compute the
         exact inverse operation, which includes reversing whitening.
         """
-        if self.whiten:
-            return np.dot(X, np.sqrt(self.explained_variance_[:, np.newaxis]) *
-                            self.components_) + self.mean_
-        else:
-            return np.dot(X, self.components_) + self.mean_
+        #if self.whiten:
+        #    return np.dot(X, np.sqrt(self.explained_variance_[:, np.newaxis]) *
+        #                    self.components_) + self.mean_
+        #else:
+
+        return np.dot(T, projector) + self.mean_
 
 class PCovR(_BasePCovR):
     """
@@ -439,6 +442,8 @@ class PCovR(_BasePCovR):
         self.space = space
         self.lr_args = lr_args
         self.svd_solver = svds
+        self.Yhat = None
+        self.W = None
 
     def fit(X, Y, Yhat=None):
         # as required by the superclass
@@ -446,7 +451,7 @@ class PCovR(_BasePCovR):
         X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
 
         if Yhat is None:
-            self.compute_Yhat(X, Y)
+            self._compute_Yhat(X, Y)
         else:
             self.Yhat = Yhat
 
@@ -472,12 +477,18 @@ class PCovR(_BasePCovR):
         else:
             self._fit_sample_space(X, Y)
 
-    def _computeYhat(X, Y):
+    def _compute_Yhat(X, Y):
 
         if self.Yhat is None :
             lr = LR(self.lr_args) #some sort of args
             lr.fit(X, Y)
             self.Yhat = lr.predict(X)
+            self.W = lr.coef_
+
+        if self.W is None:
+            W = np.linalg.pinv(np.dot(X.T, X), rcond=self.regularization)
+            W = np.linalg.multi_dot([W, X.T, Y])
+            self.W = W
 
     def _fit_feature_space(self, X, Y):
 
@@ -502,7 +513,7 @@ class PCovR(_BasePCovR):
         U, S, V = self.svd_solver(Ct, k=self.n_components, tol=self.tol)
         U, V =  svd_flip(U[:, ::-1], V[::-1])
 
-        self.pxt_ = np.linalg.multi_dot(iCsqrt, U, np.diagflat(S))
+        self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
         self.ptx_ = np.linalg.multi_dot([np.diagflat(1.0/S), U.T, Csqrt])
         self.pty_ = np.linalg.multi_dot([np.diagflat(1.0/S), U.T, iCsqrt, X.T, Y])
 
@@ -517,25 +528,24 @@ class PCovR(_BasePCovR):
 
         T = np.dot(U, np.diagflat(S))
 
-        P_lr = np.dot(X.T, X) + np.eye(X.shape[1]) * self.regularization
-        P_lr = np.linalg.pinv(P_lr)
-        P_lr = np.linalg.multi_dot([P_lr, X.T, Y, self.Yhat.T])
-
-        P = (self.alpha * X.T) + (1.0 - self.alpha) * P_lr
+        P = (self.alpha * X.T) + (1.0 - self.alpha) * np.dot(self.W, self.Yhat.T)
         self.pxt_ = np.linalg.multi_dot([P, U, np.diagflat(1/S)])
         self.pty_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, Y])
         self.pty_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, X])
 
     def transform(self, X):
-        if self.PXT is None or self.PTY is None:
-            raise Exception("Error: must fit the PCovR model before transforming")
-        else:
-            X, _, _ = self.preprocess(X=X)
-            T = X @ self.PXT
-            Yp = X @ self.PXT @ self.PTY
-            Xr = T @ self.PTX
-            Xr, Yp = self.postprocess(X=Xr, Y=Yp)
-            return T, Yp, Xr
+        return super()._transform(X, self.pxt_)
+
+    def inverse_transform(self, T): 
+
+        # TODO: check that T is of correct shape
+        return super()._inverse_transform(T, self.ptx_)
+
+    def predict(self, X):
+
+        # Predict based on X only
+        T = self.transform(X)
+        return np.dot(T, self.pty_)
 
     def loss(self, X, Y):
         T, Yp, Xr = self.transform(X)
