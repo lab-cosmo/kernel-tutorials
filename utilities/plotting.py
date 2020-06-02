@@ -10,6 +10,7 @@ plt.style.use('{}/kernel_pcovr.mplstyle'.format(utils_dir))
 
 def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
               cbar_title="", cb_orientation='vertical', cb_ax = None, rasterized=True,
+              font_scaled=False,
               **kwargs):
     """
         Base class for all plotting utilities
@@ -58,9 +59,16 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
         else:
             cbar.ax.set_ylabel(cbar_title)
 
-    ax.set_title(title)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
+    if(font_scaled):
+        size = min(fig.get_size_inches())*fig.dpi
+        fontsize = size/100.
+        ax.set_title(title, fontsize=fontsize)
+        ax.set_xlabel(x_label, fontsize=fontsize, labelpad=0.0)
+        ax.set_ylabel(y_label, fontsize=fontsize, labelpad=0.0)
+    else:
+        ax.set_title(title)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
 
     return fig, ax
 
@@ -186,7 +194,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
                     for non-typical plots
     """
     if len(Y.shape) != 1:
-        print("Only plotting first column of Y")
+        # print("Only plotting first column of Y")
         Y = Y[:, 0]
         Yp = Yp[:, 0]
         if isinstance(Y_scale, np.ndarray) or isinstance(Y_scale, list):
@@ -221,7 +229,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
     ax.set_ylim([cm[1]-bound, cm[1]+bound])
     ax.plot([cm[0]-bound, cm[0]+bound], [cm[1]-bound,
                                          cm[1]+bound],
-            'r--', zorder=4, linewidth=1)
+            'r--', zorder=4, linewidth=0.25)
 
     return ax
 
