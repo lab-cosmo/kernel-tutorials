@@ -160,7 +160,7 @@ class _BasePCovR():
         #                    self.components_) + self.mean_
         # else:
 
-        return np.dot(T, projector) + self.mean_
+        return np.dot(T, projector) #+ self.mean_
 
     def _predict(self, X, projector):
         T = self.transform(X)
@@ -209,9 +209,10 @@ class PCovR(_BasePCovR):
         super().__init__(alpha=alpha, n_components=n_components, *args, **kwargs)
         self.space = space
         self.lr_args = lr_args
-        self.svd_solver = svds
+        self.svd_solver = 'sparse'
         self.Yhat = None
         self.W = None
+        self.n_components = n_components
 
     def fit(self, X, Y, Yhat=None):
         # as required by the superclass
@@ -223,13 +224,16 @@ class PCovR(_BasePCovR):
         else:
             self.Yhat = Yhat
 
+        if min(X.shape) <= self.n_components:
+            self.svd_solver = 'full'
+
         self._fit(X, Y)
 
     def _fit(self, X, Y):
-
-        # Handle n_components==None
-        if self.n_components is None:
-            self.n_components = min(X.shape)
+        #
+        # # Handle n_components==None
+        # if self.n_components is None:
+        #     self.n_components = min(X.shape)
 
         if self.space is None:
             if X.shape[0] > X.shape[1]:
@@ -248,7 +252,7 @@ class PCovR(_BasePCovR):
             lr = LR(self.lr_args)  # some sort of args
             lr.fit(X, Y)
             self.Yhat = lr.predict(X)
-            self.W = lr.coef_
+            self.W = lr.coef_.T
 
         if self.W is None:
             W = np.linalg.pinv(np.dot(X.T, X), rcond=self.regularization)
@@ -266,8 +270,8 @@ class PCovR(_BasePCovR):
         U = U[:, S > self.tol]
         S = S[S > self.tol]
 
-        Csqrt = np.linalg.multi_dot(U, np.diagflat(S), U.T)
-        iCsqrt = np.linalg.multi_dot(U, np.diagflat(1.0 / S), U.T)
+        Csqrt = np.linalg.multi_dot([U, np.diagflat(S), U.T])
+        iCsqrt = np.linalg.multi_dot([U, np.diagflat(1.0 / S), U.T])
 
         C_lr = iCsqrt @ X.T @ self.Yhat
         C_lr = C_lr @ C_lr.T
@@ -275,8 +279,7 @@ class PCovR(_BasePCovR):
         # note about Ctilde definition
         Ct = self.alpha * C + (1.0 - self.alpha) * C_lr
 
-        U, S, V = self.svd_solver(Ct, k=self.n_components, tol=self.tol)
-        U, V = svd_flip(U[:, ::-1], V[::-1])
+        U, S, V = self._svd_solver(Ct)
 
         self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
         self.ptx_ = np.linalg.multi_dot([np.diagflat(1.0/S), U.T, Csqrt])
@@ -289,8 +292,7 @@ class PCovR(_BasePCovR):
         Kt = (self.alpha * np.dot(X, X.T)) + \
              (1.0 - self.alpha) * np.dot(self.Yhat, self.Yhat.T)
 
-        U, S, V = self.svd_solver(Kt, k=self.n_components, tol=self.tol)
-        U, V = svd_flip(U[:, ::-1], V[::-1])
+        U, S, V = self._svd_solver(Kt)
 
         T = np.dot(U, np.diagflat(S))
 
@@ -298,7 +300,21 @@ class PCovR(_BasePCovR):
             np.dot(self.W, self.Yhat.T)
         self.pxt_ = np.linalg.multi_dot([P, U, np.diagflat(1/S)])
         self.pty_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, Y])
-        self.pty_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, X])
+        self.ptx_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, X])
+
+    def _svd_solver(self,matrix):
+        if(self.svd_solver=='sparse'):
+            U, S, V = svds(matrix, k=self.n_components, tol=self.tol)
+            U, V = svd_flip(U[:, ::-1], V[::-1])
+            return U, S, V
+        else:
+            U, S, V = np.linalg.svd(matrix)
+
+            U = U[:, S>self.tol]
+            V = V[:, S>self.tol]
+            S = S[S > self.tol]
+
+            return U, S, V
 
     def transform(self, X):
         return super()._transform(X, self.pxt_)
