@@ -49,8 +49,6 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
             cb_args['cax'] = cb_ax
             cb_args['fraction'] = cb_args.get('fraction', 1.0)
 
-        print(cb_args['fraction'])
-
         cbar = fig.colorbar(p, **cb_args,
                             orientation=cb_orientation,
                             )
@@ -112,7 +110,8 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
     """
 
     Y = Y.reshape(Y.shape[0], -1)
-
+    if(len(T.shape)==1 or T.shape[-1]==1):
+        T = np.array([T.T, np.zeros(T.shape[0])]).T
 
     if('color' not in kwargs):
         if Y.shape[-1] != 1:
@@ -141,14 +140,18 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
                 kwargs.pop('cmap')
             if('vmin' in kwargs):
                 kwargs.pop('vmin'); kwargs.pop('vmax')
-        else:
+        elif('c' not in kwargs):
             Y = Y[:, 0]
             Y_center = np.array([Y_center])
             Y_center = Y_center.reshape(Y_center.shape[0], -1)
             Y_center = Y_center[0]
 
-            kwargs['c'] = Y * Y_scale + Y_center
-            kwargs['cmap'] = kwargs.get('cmapX', "viridis")
+            if('colormap' in kwargs):
+                kwargs['c'] = [kwargs['colormap']( (y-min(Y)) / (max(Y) - min(Y))) for y in Y]
+                kwargs.pop('colormap')
+            else:
+                kwargs['c'] = Y * Y_scale + Y_center
+                kwargs['cmap'] = kwargs.get('cmapX', "viridis")
 
         if('cmap2D' in kwargs):
             kwargs.pop('cmap2D')
