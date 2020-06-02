@@ -4,7 +4,7 @@ from sklearn.linear_model import LinearRegression as LR
 from sklearn.utils import check_array
 from sklearn.utils.extmath import svd_flip
 from sklearn.utils.validation import check_is_fitted, check_X_y
-from scipy.sparse.linalg import svds
+from scipy.sparse.linalg import svds, eigs
 
 
 class _BasePCovR():
@@ -209,7 +209,7 @@ class PCovR(_BasePCovR):
         super().__init__(alpha=alpha, n_components=n_components, *args, **kwargs)
         self.space = space
         self.lr_args = lr_args
-        self.svd_solver = 'sparse'
+        self.eig_solver = 'sparse'
         self.Yhat = None
         self.W = None
         self.n_components = n_components
@@ -225,7 +225,7 @@ class PCovR(_BasePCovR):
             self.Yhat = Yhat
 
         if min(X.shape) <= self.n_components:
-            self.svd_solver = 'full'
+            self.eig_solver = 'full'
 
         self._fit(X, Y)
 
@@ -240,6 +240,7 @@ class PCovR(_BasePCovR):
                 self.space = 'feature'
             else:
                 self.space = 'structure'
+        print(self.space)
 
         if self.space == 'feature':
             self._fit_feature_space(X, Y)
@@ -279,7 +280,8 @@ class PCovR(_BasePCovR):
         # note about Ctilde definition
         Ct = self.alpha * C + (1.0 - self.alpha) * C_lr
 
-        U, S, V = self._svd_solver(Ct)
+        v, U = self._eig_solver(Ct)
+        S = v ** 0.5
 
         self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
         self.ptx_ = np.linalg.multi_dot([np.diagflat(1.0/S), U.T, Csqrt])
@@ -292,29 +294,33 @@ class PCovR(_BasePCovR):
         Kt = (self.alpha * np.dot(X, X.T)) + \
              (1.0 - self.alpha) * np.dot(self.Yhat, self.Yhat.T)
 
-        U, S, V = self._svd_solver(Kt)
+        v, U = self._eig_solver(Kt)
+        S = v ** 0.5
 
         T = np.dot(U, np.diagflat(S))
 
         P = (self.alpha * X.T) + (1.0 - self.alpha) * \
             np.dot(self.W, self.Yhat.T)
         self.pxt_ = np.linalg.multi_dot([P, U, np.diagflat(1/S)])
-        self.pty_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, Y])
-        self.ptx_ = np.linalg.multi_dot([np.diagflat(1/S), T.T, X])
+        self.pty_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, Y])
+        self.ptx_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, X])
 
-    def _svd_solver(self,matrix):
-        if(self.svd_solver=='sparse'):
-            U, S, V = svds(matrix, k=self.n_components, tol=self.tol)
-            U, V = svd_flip(U[:, ::-1], V[::-1])
-            return U, S, V
+    def _eig_solver(self,matrix):
+        if(self.eig_solver=='sparse'):
+            v, U= eigs(matrix, k=self.n_components, tol=self.tol)
         else:
-            U, S, V = np.linalg.svd(matrix)
+            v, U = np.linalg.eig(matrix)
 
-            U = U[:, S>self.tol]
-            V = V[:, S>self.tol]
-            S = S[S > self.tol]
+        U = U[:, np.argsort(v)]
+        v = v[np.argsort(v)]
 
-            return U, S, V
+        U = U[:, v > self.tol]
+        v = v[v > self.tol]
+
+        if(len(v)==1):
+            U = U.reshape(-1,1)
+
+        return v, U
 
     def transform(self, X):
         return super()._transform(X, self.pxt_)
