@@ -1,50 +1,53 @@
 import numpy as np
-from matplotlib import pyplot as plt
+from sklearn import exceptions
+from sklearn.utils.validation import check_X_y
 
-from utilities.sklearn_pcovr import PCovR
-from utilities.plotting import plot_regression, plot_projection
-from utilities.colorbars import load
-load()
+from utilities.sklearn_covr.pcovr import PCovR
 
-data = np.load('./tests/CSD-test.npz')
-X = data["X"]
-Y = data["Y"]
+def run_tests():
+    data = np.load('./tests/CSD-test.npz')
+    X = data["X"]
+    Y = data["Y"]
 
-fig, axes = plt.subplots(3,3, figsize=(4,4))
+    # Basic Test of PCovR Errors
+    lr_errors = np.nan * np.zeros(21)
+    pca_errors = np.nan * np.zeros(21)
+    for i, alpha in enumerate(np.linspace(0,1,21)):
+        pcovr = PCovR(alpha = alpha,
+                      n_components=2,
+                      regularization=1e-6,
+                      tol=1e-12)
+        pcovr.fit(X, Y)
 
-for i, alpha in enumerate(np.linspace(0,1,3)):
-    pcovr = PCovR(alpha = alpha,
+        T = pcovr.transform(X)
+        Xr = pcovr.inverse_transform(T)
+        Yp = pcovr.predict(X)
+        lr_errors[i] = np.linalg.norm(Y-Yp)**2.0 / np.linalg.norm(Y)**2.0
+        pca_errors[i] = np.linalg.norm(X-Xr)**2.0 / np.linalg.norm(X)**2.0
+
+        assert not np.isnan(lr_errors[i]) and not np.isnan(pca_errors[i])
+
+    assert all(lr_errors[i] <= lr_errors[i+1] and pca_errors[i] >= pca_errors[i+1]for i in range(len(lr_errors)-1))
+
+    # Test of PCovR Fitting
+    pcovr = PCovR(alpha = 0.5,
                   n_components=2,
                   regularization=1e-6,
                   tol=1e-12)
+
+    try:
+        T = pcovr.transform(X)
+    except exceptions.NotFittedError:
+        print("Premature transformation failed in expected manner")
+
+    # Test of T shape
     pcovr.fit(X, Y)
-
     T = pcovr.transform(X)
-    Xr = pcovr.inverse_transform(T)
-    Yp = pcovr.predict(X)
 
-    plot_projection(Y, T, fig=fig, ax=axes[0][i],
-                    x_label=r"$PC_1$", y_label=r"$PC_2$",
-                    cbar=False, s=4, font_scaled=True,
-                    cmapX='cbarHot_0.3_1.05'
-                    )
-    plot_regression(X, Xr, fig=fig, ax=axes[1][i],
-                    x_label=r"$\mathbf{X}$", y_label=r"$\mathbf{TP}_{TX}$",
-                    cbar=False, s=4, font_scaled=True,
-                    cmapY='bone_r_0.2_1.0'
-                    )
-    plot_regression(Y, Yp, fig=fig, ax=axes[2][i],
-                    x_label=r"$\mathbf{Y}$", y_label=r"$\mathbf{TP}_{TY}$",
-                    cbar=False, s=4, font_scaled=True,
-                    cmapY='bone_r_0.2_1.0'
-                    )
-    fig.subplots_adjust(hspace=0.4, wspace=0.4)
-
-    axes[0][i].set_title(r'$\alpha =$'+f' {alpha}')
-
-for ax in axes.flatten():
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
+    assert check_X_y(X, T, multi_output=True)
 
 
-plt.show()
+
+if __name__ == "__main__":
+    run_tests()
+    print("Everything passed")
