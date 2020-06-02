@@ -1,10 +1,7 @@
 import numpy as np
-from abc import abstractmethod
 from sklearn.linear_model import LinearRegression as LR
-from sklearn.utils import check_array
-from sklearn.utils.extmath import svd_flip
-from sklearn.utils.validation import check_is_fitted, check_X_y
-from scipy.sparse.linalg import svds, eigs
+from sklearn.utils.validation import check_X_y
+from scipy.sparse.linalg import eigs
 
 from ._base import _BasePCovR
 
@@ -114,14 +111,12 @@ class PCovR(_BasePCovR):
         C = np.dot(X.T, X)
 
         # it is necessary to use the full SVD to decompose C
-        U, S, V = np.linalg.svd(C, full_matrices=False)
-        U, V = svd_flip(U[:, ::-1], V[::-1])
-
-        U = U[:, S > self.tol]
-        S = S[S > self.tol]
+        v, U = self._eig_solver(C, full_matrix=True)
+        S = v ** 0.5
+        S_inv = np.linalg.pinv(np.diagflat(S))
 
         Csqrt = np.linalg.multi_dot([U, np.diagflat(S), U.T])
-        iCsqrt = np.linalg.multi_dot([U, np.diagflat(1.0 / S), U.T])
+        iCsqrt = np.linalg.multi_dot([U, S_inv, U.T])
 
         C_lr = iCsqrt @ X.T @ self.Yhat
         C_lr = C_lr @ C_lr.T
@@ -133,9 +128,9 @@ class PCovR(_BasePCovR):
         S = v ** 0.5
 
         self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
-        self.ptx_ = np.linalg.multi_dot([np.diagflat(1.0/S), U.T, Csqrt])
+        self.ptx_ = np.linalg.multi_dot([S_inv, U.T, Csqrt])
         self.pty_ = np.linalg.multi_dot(
-            [np.diagflat(1.0/S), U.T, iCsqrt, X.T, Y])
+            [S_inv, U.T, iCsqrt, X.T, Y])
 
     def _fit_sample_space(self, X, Y):
         """
@@ -166,8 +161,8 @@ class PCovR(_BasePCovR):
         self.pty_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, Y])
         self.ptx_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, X])
 
-    def _eig_solver(self,matrix):
-        if(self.eig_solver=='sparse'):
+    def _eig_solver(self, matrix, full_matrix=False):
+        if(self.eig_solver=='sparse' and full_matrix==False):
             v, U= eigs(matrix, k=self.n_components, tol=self.tol)
         else:
             v, U = np.linalg.eig(matrix)
