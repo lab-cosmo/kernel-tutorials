@@ -111,7 +111,7 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
 
     Y = Y.reshape(Y.shape[0], -1)
     if(len(T.shape)==1 or T.shape[-1]==1):
-        T = np.array([T.T, np.zeros(T.shape[0])]).T
+        T = np.array([T[:,0], np.zeros(T.shape[0])]).T
 
     if('color' not in kwargs):
         if Y.shape[-1] != 1:
