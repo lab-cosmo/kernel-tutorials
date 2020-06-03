@@ -36,10 +36,11 @@ class PCovR(_BasePCovR):
                  ):
         super().__init__(alpha=alpha, n_components=n_components,
                          regularization=regularization, tol=tol,
+                         full_eig=False,
                          *args, **kwargs)
         self.space = space
         self.lr_args = lr_args
-        self.eig_solver = eig_solver
+        self.full_eig = full_eig
         self.n_components = n_components
         self.Yhat = None
         self.W = None
@@ -57,7 +58,7 @@ class PCovR(_BasePCovR):
 
         # Sparse eigensolvers will not work when seeking N-1 eigenvalues
         if min(X.shape) <= self.n_components:
-            self.eig_solver = 'full'
+            self.full_eig = True
 
         self._fit(X, Y)
 
@@ -124,7 +125,7 @@ class PCovR(_BasePCovR):
         # note about Ctilde definition
         Ct = self.alpha * C + (1.0 - self.alpha) * C_lr
 
-        v, U = self._eig_solver(Ct)
+        v, U = self._eig_solver(Ct, full_matrix=self.full_eig)
         S = v ** 0.5
 
         self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
