@@ -10,6 +10,7 @@ plt.style.use('{}/kernel_pcovr.mplstyle'.format(utils_dir))
 
 def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
               cbar_title="", cb_orientation='vertical', cb_ax = None, rasterized=True,
+              font_scaled=False,
               **kwargs):
     """
         Base class for all plotting utilities
@@ -49,8 +50,6 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
             cb_args['cax'] = cb_ax
             cb_args['fraction'] = cb_args.get('fraction', 1.0)
 
-        print(cb_args['fraction'])
-
         cbar = fig.colorbar(p, **cb_args,
                             orientation=cb_orientation,
                             )
@@ -60,9 +59,16 @@ def plot_base(scatter_points, fig, ax, title, x_label, y_label, cbar=True,
         else:
             cbar.ax.set_ylabel(cbar_title)
 
-    ax.set_title(title)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
+    if(font_scaled):
+        size = min(fig.get_size_inches())*fig.dpi
+        fontsize = size/100.
+        ax.set_title(title, fontsize=fontsize)
+        ax.set_xlabel(x_label, fontsize=fontsize, labelpad=0.0)
+        ax.set_ylabel(y_label, fontsize=fontsize, labelpad=0.0)
+    else:
+        ax.set_title(title)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
 
     return fig, ax
 
@@ -112,7 +118,8 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
     """
 
     Y = Y.reshape(Y.shape[0], -1)
-
+    if(len(T.shape)==1 or T.shape[-1]==1):
+        T = np.array([T[:,0], np.zeros(T.shape[0])]).T
 
     if('color' not in kwargs):
         if Y.shape[-1] != 1:
@@ -141,14 +148,18 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
                 kwargs.pop('cmap')
             if('vmin' in kwargs):
                 kwargs.pop('vmin'); kwargs.pop('vmax')
-        else:
+        elif('c' not in kwargs):
             Y = Y[:, 0]
             Y_center = np.array([Y_center])
             Y_center = Y_center.reshape(Y_center.shape[0], -1)
             Y_center = Y_center[0]
 
-            kwargs['c'] = Y * Y_scale + Y_center
-            kwargs['cmap'] = kwargs.get('cmapX', "viridis")
+            if('colormap' in kwargs):
+                kwargs['c'] = [kwargs['colormap']( (y-min(Y)) / (max(Y) - min(Y))) for y in Y]
+                kwargs.pop('colormap')
+            else:
+                kwargs['c'] = Y * Y_scale + Y_center
+                kwargs['cmap'] = kwargs.get('cmapX', "viridis")
 
         if('cmap2D' in kwargs):
             kwargs.pop('cmap2D')
@@ -183,7 +194,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
                     for non-typical plots
     """
     if len(Y.shape) != 1:
-        print("Only plotting first column of Y")
+        # print("Only plotting first column of Y")
         Y = Y[:, 0]
         Yp = Yp[:, 0]
         if isinstance(Y_scale, np.ndarray) or isinstance(Y_scale, list):
@@ -218,7 +229,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
     ax.set_ylim([cm[1]-bound, cm[1]+bound])
     ax.plot([cm[0]-bound, cm[0]+bound], [cm[1]-bound,
                                          cm[1]+bound],
-            'r--', zorder=4, linewidth=1)
+            'r--', zorder=4, linewidth=0.25)
 
     return ax
 
