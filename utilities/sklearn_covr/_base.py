@@ -99,3 +99,21 @@ class _BasePCovR():
         A = check_array(A)
         A_transformed = np.dot(A, self.__dict__[projector])
         return A_transformed
+
+
+    def _eig_solver(self, matrix, full_matrix=False):
+        if(self.eig_solver=='sparse' and full_matrix==False):
+            v, U= eigs(matrix, k=self.n_components, tol=self.tol)
+        else:
+            v, U = np.linalg.eig(matrix)
+
+        U = np.real(U[:, np.argsort(v)])
+        v = np.real(v[np.argsort(v)])
+
+        U = U[:, v > self.tol]
+        v = v[v > self.tol]
+
+        if(len(v)==1):
+            U = U.reshape(-1,1)
+
+        return v, U
