@@ -11,7 +11,7 @@ def eig_inv(v, rcond=1e-14):
 
 
 def normalize_matrix(A, scale=None):
-    """ Normalize a matrix so that it has unit variance """
+    """ Normalize a matrix so that its entries have unit variance """
     if scale is None:
         scale = np.linalg.norm(A) / np.sqrt(len(A))
     return A / scale
