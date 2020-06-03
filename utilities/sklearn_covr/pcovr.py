@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.utils.validation import check_X_y
 from scipy.sparse.linalg import eigs
+from numpy.linalg import multi_dot as mdot
 
 from ._base import _BasePCovR
 
@@ -77,6 +78,7 @@ class PCovR(_BasePCovR):
         else:
             self._fit_sample_space(X, Y)
 
+        # placeholder for better scaling later
         self.mean_ = np.mean(X, axis =0)
 
     def _compute_Yhat(self, X, Y):
@@ -92,7 +94,7 @@ class PCovR(_BasePCovR):
 
         if self.W is None:
             W = np.linalg.pinv(np.dot(X.T, X), rcond=self.regularization)
-            W = np.linalg.multi_dot([W, X.T, Y])
+            W = mdot([W, X.T, Y])
             self.W = W
 
     def _fit_feature_space(self, X, Y):
@@ -116,8 +118,8 @@ class PCovR(_BasePCovR):
         S = v ** 0.5
         S_inv = np.linalg.pinv(np.diagflat(S))
 
-        Csqrt = np.linalg.multi_dot([U, np.diagflat(S), U.T])
-        iCsqrt = np.linalg.multi_dot([U, S_inv, U.T])
+        Csqrt = mdot([U, np.diagflat(S), U.T])
+        iCsqrt = mdot([U, S_inv, U.T])
 
         C_lr = iCsqrt @ X.T @ self.Yhat
         C_lr = C_lr @ C_lr.T
@@ -128,10 +130,9 @@ class PCovR(_BasePCovR):
         v, U = self._eig_solver(Ct, full_matrix=self.full_eig)
         S = v ** 0.5
 
-        self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
-        self.ptx_ = np.linalg.multi_dot([S_inv, U.T, Csqrt])
-        self.pty_ = np.linalg.multi_dot(
-            [S_inv, U.T, iCsqrt, X.T, Y])
+        self.pxt_ = mdot([iCsqrt, U, np.diagflat(S)])
+        self.ptx_ = mdot([S_inv, U.T, Csqrt])
+        self.pty_ = mdot([S_inv, U.T, iCsqrt, X.T, Y])
 
     def _fit_sample_space(self, X, Y):
         """
@@ -151,38 +152,23 @@ class PCovR(_BasePCovR):
         Kt = (self.alpha * np.dot(X, X.T)) + \
              (1.0 - self.alpha) * np.dot(self.Yhat, self.Yhat.T)
 
-        v, U = self._eig_solver(Kt)
+        v, U = self._eig_solver(Kt, full_matrix=self.full_eig)
         S = v ** 0.5
 
         T = np.dot(U, np.diagflat(S))
 
         P = (self.alpha * X.T) + (1.0 - self.alpha) * \
             np.dot(self.W, self.Yhat.T)
-        self.pxt_ = np.linalg.multi_dot([P, U, np.diagflat(1/S)])
-        self.pty_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, Y])
-        self.ptx_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, X])
-
-    def _eig_solver(self, matrix, full_matrix=False):
-        if(self.eig_solver=='sparse' and full_matrix==False):
-            v, U= eigs(matrix, k=self.n_components, tol=self.tol)
-        else:
-            v, U = np.linalg.eig(matrix)
-
-        U = np.real(U[:, np.argsort(v)])
-        v = np.real(v[np.argsort(v)])
-
-        U = U[:, v > self.tol]
-        v = v[v > self.tol]
-
-        if(len(v)==1):
-            U = U.reshape(-1,1)
-
-        return v, U
+        self.pxt_ = mdot([P, U, np.diagflat(1/S)])
+        self.pty_ = mdot([np.diagflat(1/S**2.0), T.T, Y])
+        self.ptx_ = mdot([np.diagflat(1/S**2.0), T.T, X])
 
     def transform(self, X):
+        # we should be ready to scale and center if necessary
         return super()._project(X, 'pxt_')
 
     def inverse_transform(self, T):
+        # we should be ready to un-scale and un-center if necessary
         return super()._project(T, 'ptx_')
 
     def predict(self, X):
