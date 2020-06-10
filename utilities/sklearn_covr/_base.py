@@ -10,9 +10,9 @@ class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCM
     Super-class defined for PCovR style methods
     # """
 
-    def __init__(self, alpha, n_components, regularization, tol):
+    def __init__(self, mixing, n_components=None, regularization=1E-12, tol=0):
         # TODO
-        self.alpha = alpha
+        self.mixing = mixing
         self.n_components = n_components
         self.regularization = regularization
         self.tol = tol
