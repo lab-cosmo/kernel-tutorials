@@ -5,6 +5,8 @@ from scipy.sparse.linalg import eigs
 from numpy.linalg import multi_dot as mdot
 
 from ._base import _BasePCovR
+from sklearn.preprocessing import KernelCenterer
+from sklearn.metrics.pairwise import pairwise_kernels
 
 class KernelPCovR(_BasePCovR):
     """
@@ -142,8 +144,7 @@ class KernelPCovR(_BasePCovR):
                 "Cannot fit_inverse_transform with a precomputed kernel.")
 
         super().__init__(mixing=mixing, n_components=n_components,
-                regularization=regularization, tol=tol,
-                *args, **kwargs)
+                tol=tol)
 
         self.mixing = mixing
         self.krr_params = krr_params
@@ -241,7 +242,6 @@ class KernelPCovR(_BasePCovR):
 
     def fit(self, X, Y, Yhat=None, W=None):
 
-        X = check_array(X, accept_sparse='csr', copy=self.copy_X)
         X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
 
         self._centerer = KernelCenterer() # todo  place our centerer
