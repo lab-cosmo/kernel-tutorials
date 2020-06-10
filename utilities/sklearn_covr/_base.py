@@ -109,8 +109,8 @@ class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCM
         else:
             v, U = np.linalg.eig(matrix)
 
-        U = np.real(U[:, np.argsort(v)])
-        v = np.real(v[np.argsort(v)])
+        U = np.real(U[:, np.argsort(-v)])
+        v = np.real(v[np.argsort(-v)])
 
         U = U[:, v > self.tol]
         v = v[v > self.tol]
