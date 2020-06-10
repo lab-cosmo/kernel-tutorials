@@ -1,9 +1,11 @@
 import numpy as np
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 from sklearn.utils import check_array
 from sklearn.utils.validation import check_is_fitted
+from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
+from scipy.sparse.linalg import eigs
 
-class _BasePCovR():
+class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCMeta):
     """
     Super-class defined for PCovR style methods
     # """
@@ -102,7 +104,7 @@ class _BasePCovR():
 
 
     def _eig_solver(self, matrix, full_matrix=False):
-        if(self.eig_solver=='sparse' and full_matrix==False):
+        if(full_matrix==False):
             v, U= eigs(matrix, k=self.n_components, tol=self.tol)
         else:
             v, U = np.linalg.eig(matrix)
