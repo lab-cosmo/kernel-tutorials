@@ -197,7 +197,7 @@ class KernelPCovR(_BasePCovR):
             n_components = min(Kt.shape[0], self.n_components)
 
 
-        v, U = self._eig_solver(Kt, full_matrix=self.full_eig)
+        v, U = self._eig_solver(Kt, full_matrix=False)
 
         P_krr = np.matmul(self.W, self.Yhat.T)
 
@@ -252,7 +252,7 @@ class KernelPCovR(_BasePCovR):
         self.W = W
 
         if self.Yhat is None or self.W is None:
-            self._compute_Yhat(X, Y)
+            self._compute_Yhat(K, Y)
 
         T = self._fit_transform(K)
 
