@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.utils.validation import check_X_y
-from scipy.sparse.linalg import eigs
 from numpy.linalg import multi_dot as mdot
 
 from ._base import _BasePCovR
@@ -32,13 +31,11 @@ class PCovR(_BasePCovR):
 
     def __init__(self, alpha=0.0, n_components=None,
                  regularization=1e-6, tol=1e-12,
-                 eig_solver="sparse",
+                 full_eig=False,
                  space=None, lr_args={}, *args, **kwargs,
                  ):
         super().__init__(alpha=alpha, n_components=n_components,
-                         regularization=regularization, tol=tol,
-                         full_eig=False,
-                         *args, **kwargs)
+                         regularization=regularization, tol=tol)
         self.space = space
         self.lr_args = lr_args
         self.full_eig = full_eig
@@ -87,10 +84,13 @@ class PCovR(_BasePCovR):
         """
 
         if self.Yhat is None:
-            lr = LR(self.lr_args)  # some sort of args
-            lr.fit(X, Y)
-            self.Yhat = lr.predict(X)
-            self.W = lr.coef_.T
+            if self.W is not None:
+                self.Yhat = np.dot(X, self.W)
+            else:
+                lr = LR(self.lr_args)  # some sort of args
+                lr.fit(X, Y)
+                self.Yhat = lr.predict(X)
+                self.W = lr.coef_.T
 
         if self.W is None:
             W = np.linalg.pinv(np.dot(X.T, X), rcond=self.regularization)
