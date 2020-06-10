@@ -7,6 +7,7 @@ from numpy.linalg import multi_dot as mdot
 from ._base import _BasePCovR
 from sklearn.preprocessing import KernelCenterer
 from sklearn.metrics.pairwise import pairwise_kernels
+from sklearn.exceptions import NotFittedError
 
 class KernelPCovR(_BasePCovR):
     """
@@ -196,19 +197,18 @@ class KernelPCovR(_BasePCovR):
         else:
             n_components = min(Kt.shape[0], self.n_components)
 
-
         v, U = self._eig_solver(Kt, full_matrix=False)
 
         P_krr = np.matmul(self.W, self.Yhat.T)
 
-        P_kpca = np.eye(K.shape[0]) #/ (np.trace(K) / K.shape[0])
+        P_kpca = np.eye(Kt.shape[0]) #/ (np.trace(K) / K.shape[0])
 
         P = (self.mixing * P_kpca) + (1.0 - self.mixing) * P_krr
 
         v_inv = np.linalg.pinv(np.diagflat(v))
 
         self.pkt_ = mdot([P, U, np.sqrt(v_inv)])
-        T = self._project(K, self.pkt_)
+        T = self._project(K, 'pkt_')
         return T
 
     def _fit_inverse_transform(self, T, X):
@@ -234,7 +234,7 @@ class KernelPCovR(_BasePCovR):
                 krr = KRR(kernel='precomputed', **self.krr_params)  # some sort of args
                 krr.fit(K, Y)
                 self.Yhat = krr.predict(K)
-                self.W = krr.dual_coef_.T
+                self.W = krr.dual_coef_
 
         if self.W is None:
             self.W = np.linalg.lstsq(K, self.Yhat)[0]
@@ -263,8 +263,6 @@ class KernelPCovR(_BasePCovR):
 
         self.X_fit_ = X
 
-    # def fit_transform(self, X, Y, )
-
     def transform(self, X):
         """Transform X.
 
@@ -276,12 +274,11 @@ class KernelPCovR(_BasePCovR):
         -------
         X_new : array-like, shape (n_samples, n_components)
         """
-        check_is_fitted(self)
 
         # Compute centered gram matrix between X and training data X_fit_
         K = self._centerer.transform(self._get_kernel(X, self.X_fit_))
 
-        return self._project(K, self.pkt_)
+        return self._project(K, 'pkt_')
 
     def inverse_transform(self, T):
         """Transform X back to original space.
@@ -303,7 +300,7 @@ class KernelPCovR(_BasePCovR):
                                  " set to True when instantiating and hence "
                                  "the inverse transform is not available.")
 
-        return self._project(T, self.ptx_)
+        return self._project(T, 'ptx_')
 
 
 
@@ -318,10 +315,9 @@ class KernelPCovR(_BasePCovR):
         -------
         Y : array-like, shape (n_samples, n_properties)
         """
-        check_is_fitted(self)
 
         # Compute centered gram matrix between X and training data X_fit_
-        K = self._centerer.transform(self._get_kernel(X, self.X_fit_))
+        # K = self._centerer.transform(self._get_kernel(X, self.X_fit_))
 
-
-        return self._project(K, self.pky_)
+        T = self.transform(X)
+        return self._project(T, 'pty_')
