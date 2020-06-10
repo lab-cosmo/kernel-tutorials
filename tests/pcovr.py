@@ -16,6 +16,7 @@ def run_tests():
         pcovr = PCovR(alpha = alpha,
                       n_components=2,
                       regularization=1e-6,
+                      full_eig=False,
                       tol=1e-12)
         pcovr.fit(X, Y)
 
@@ -26,6 +27,7 @@ def run_tests():
         pca_errors[i] = np.linalg.norm(X-Xr)**2.0 / np.linalg.norm(X)**2.0
 
         assert not np.isnan(lr_errors[i]) and not np.isnan(pca_errors[i])
+        print(f"Passed α = {round(alpha,4)}", end='\r')
 
     assert all(lr_errors[i] <= lr_errors[i+1] and pca_errors[i] >= pca_errors[i+1]for i in range(len(lr_errors)-1))
 
