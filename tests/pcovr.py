@@ -12,8 +12,8 @@ def run_tests():
     # Basic Test of PCovR Errors
     lr_errors = np.nan * np.zeros(21)
     pca_errors = np.nan * np.zeros(21)
-    for i, alpha in enumerate(np.linspace(0,1,21)):
-        pcovr = PCovR(alpha = alpha,
+    for i, mixing in enumerate(np.linspace(0,1,21)):
+        pcovr = PCovR(mixing = mixing,
                       n_components=2,
                       regularization=1e-6,
                       full_eig=False,
@@ -27,12 +27,12 @@ def run_tests():
         pca_errors[i] = np.linalg.norm(X-Xr)**2.0 / np.linalg.norm(X)**2.0
 
         assert not np.isnan(lr_errors[i]) and not np.isnan(pca_errors[i])
-        print(f"Passed α = {round(alpha,4)}", end='\r')
+        print(f"Passed α = {round(mixing,4)}", end='\r')
 
     assert all(lr_errors[i] <= lr_errors[i+1] and pca_errors[i] >= pca_errors[i+1]for i in range(len(lr_errors)-1))
 
     # Test of PCovR Fitting
-    pcovr = PCovR(alpha = 0.5,
+    pcovr = PCovR(mixing = 0.5,
                   n_components=2,
                   regularization=1e-6,
                   tol=1e-12)
@@ -48,6 +48,7 @@ def run_tests():
 
     assert check_X_y(X, T, multi_output=True)
 
+    # Test of improperly shaped X and Y
 
 
 if __name__ == "__main__":
