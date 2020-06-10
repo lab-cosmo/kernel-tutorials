@@ -10,11 +10,15 @@ class PCovR(_BasePCovR):
     Performs PCovR, detecting whether the data set is in Sample or Feature Space
 
     ----Attributes----
+    mixing: float
+        Mixing parameter for KPCovR model. Coincides with `alpha` parameter in
+        PCovR/KPCovR literature.
+
     space: whether to compute in feature or sample space
     n_components: number of latent space components for dimensionality reduction
     regularization: regularization parameter for linear models
     tol: tolerance for small eigenvalues in eigendecompositions
-    alpha: (float) mixing parameter between decomposition and regression
+
     ptx_: projector from latent space to input space
     pty_: projector from latent space to property space
     pxt_: projector from input space to latent space
@@ -29,12 +33,12 @@ class PCovR(_BasePCovR):
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha=0.0, n_components=None,
+    def __init__(self, mixing=0.0, n_components=None,
                  regularization=1e-6, tol=1e-12,
                  full_eig=False,
                  space=None, lr_args={}, *args, **kwargs,
                  ):
-        super().__init__(alpha=alpha, n_components=n_components,
+        super().__init__(mixing=mixing, n_components=n_components,
                          regularization=regularization, tol=tol)
         self.space = space
         self.lr_args = lr_args
@@ -42,23 +46,6 @@ class PCovR(_BasePCovR):
         self.n_components = n_components
         self.Yhat = None
         self.W = None
-
-    def fit(self, X, Y, Yhat=None, W=None):
-        # as required by the superclass
-
-        X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
-
-        if Yhat is None or W is None:
-            self._compute_Yhat(X, Y)
-        else:
-            self.Yhat = Yhat
-            self.W = W
-
-        # Sparse eigensolvers will not work when seeking N-1 eigenvalues
-        if min(X.shape) <= self.n_components:
-            self.full_eig = True
-
-        self._fit(X, Y)
 
     def _fit(self, X, Y):
         """
@@ -125,7 +112,7 @@ class PCovR(_BasePCovR):
         C_lr = C_lr @ C_lr.T
 
         # note about Ctilde definition
-        Ct = self.alpha * C + (1.0 - self.alpha) * C_lr
+        Ct = self.mixing * C + (1.0 - self.mixing) * C_lr
 
         v, U = self._eig_solver(Ct, full_matrix=self.full_eig)
         S = v ** 0.5
@@ -149,28 +136,47 @@ class PCovR(_BasePCovR):
         """
 
 
-        Kt = (self.alpha * np.dot(X, X.T)) + \
-             (1.0 - self.alpha) * np.dot(self.Yhat, self.Yhat.T)
+        Kt = (self.mixing * np.dot(X, X.T)) + \
+             (1.0 - self.mixing) * np.dot(self.Yhat, self.Yhat.T)
 
         v, U = self._eig_solver(Kt, full_matrix=self.full_eig)
         S = v ** 0.5
 
         T = np.dot(U, np.diagflat(S))
 
-        P = (self.alpha * X.T) + (1.0 - self.alpha) * \
+        P = (self.mixing * X.T) + (1.0 - self.mixing) * \
             np.dot(self.W, self.Yhat.T)
         self.pxt_ = mdot([P, U, np.diagflat(1/S)])
         self.pty_ = mdot([np.diagflat(1/S**2.0), T.T, Y])
         self.ptx_ = mdot([np.diagflat(1/S**2.0), T.T, X])
 
+    def fit(self, X, Y, Yhat=None, W=None):
+        # as required by the superclass
+
+        X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
+
+        self.Yhat = Yhat
+        self.W = W
+
+        if self.Yhat is None or self.W is None:
+            self._compute_Yhat(X, Y)
+
+        # Sparse eigensolvers will not work when seeking N-1 eigenvalues
+        if min(X.shape) <= self.n_components:
+            self.full_eig = True
+
+        self._fit(X, Y)
+
+    # todo fit_transform and fit_predict
+
     def transform(self, X):
         # we should be ready to scale and center if necessary
-        return super()._project(X, 'pxt_')
+        return self._project(X, 'pxt_')
 
     def inverse_transform(self, T):
         # we should be ready to un-scale and un-center if necessary
-        return super()._project(T, 'ptx_')
+        return self._project(T, 'ptx_')
 
     def predict(self, X):
         # Predict based on X only
-        return super()._project(self.transform(X), 'pty_')
+        return self._project(self.transform(X), 'pty_')
