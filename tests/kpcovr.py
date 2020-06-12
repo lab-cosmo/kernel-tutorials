@@ -12,6 +12,7 @@ def run_tests():
     X = data["X"]
     Y = data["Y"]
 
+    print("\nTesting with a linear kernel.")
     # Basic Test of PCovR Errors with linear kernel
     n_mixing = 6
     mixings = np.linspace(0,1,n_mixing)
@@ -35,7 +36,7 @@ def run_tests():
 
         try:
             assert not np.isnan(krr_errors[i]) and not np.isnan(kpca_errors[i])
-            print(f"Passed α = {round(mixing,4)}", end='\r')
+            print(f"Passed α = {round(mixing,4)}, KRR error = ({krr_errors[i]}), KPCA error = ({kpca_errors[i]})")
         except AssertionError:
             return False
 
@@ -53,7 +54,10 @@ def run_tests():
 
     # test precomputed kernel
 
-    K = gaussian_kernel(X, X, gamma=1.0)
+    print("\nTesting with a pre-computed RBF kernel.")
+    K = gaussian_kernel(X, X, gamma=0.5)
+    K = center_kernel(K)
+
     n_mixing = 6
     mixings = np.linspace(0,1,n_mixing)
     krr_errors = np.nan * np.zeros(n_mixing)
@@ -62,12 +66,11 @@ def run_tests():
         kpcovr = KernelPCovR(mixing = mixing, kernel='precomputed',
                       n_components=8,
                       tol=1e-12,
-                      krr_params = dict(alpha=1,)
+                      krr_params = dict(alpha=1e-6,)
                     )
         kpcovr.fit(K, Y)
 
         T = kpcovr.transform(K)
-        # Xr = kpcovr.inverse_transform(T)
         Yp = kpcovr.predict(K)
 
         krr_errors[i] = np.linalg.norm(Y-Yp)**2.0 / np.linalg.norm(Y)**2.0
@@ -75,7 +78,7 @@ def run_tests():
 
         try:
             assert not np.isnan(krr_errors[i]) and not np.isnan(kpca_errors[i])
-            print(f"Passed α = {round(mixing,4)}", end='\r')
+            print(f"Passed α = {round(mixing,4)}, KRR error = ({krr_errors[i]}), KPCA error = ({kpca_errors[i]})")
         except AssertionError:
             return False
 
