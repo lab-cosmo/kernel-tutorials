@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.linear_model import LinearRegression as LR
+from sklearn.linear_model import Ridge as LR
 from sklearn.utils.validation import check_X_y
 from numpy.linalg import multi_dot as mdot
 
@@ -36,12 +36,12 @@ class PCovR(_BasePCovR):
     def __init__(self, mixing=0.0, n_components=None,
                  regularization=1e-6, tol=1e-12,
                  full_eig=False,
-                 space=None, lr_args={}, *args, **kwargs,
+                 space=None, lr_params={}, *args, **kwargs,
                  ):
         super().__init__(mixing=mixing, n_components=n_components,
                          regularization=regularization, tol=tol)
         self.space = space
-        self.lr_args = lr_args
+        self.lr_params = lr_params
         self.full_eig = full_eig
         self.n_components = n_components
         self.Yhat = None
@@ -74,7 +74,7 @@ class PCovR(_BasePCovR):
             if self.W is not None:
                 self.Yhat = np.dot(X, self.W)
             else:
-                lr = LR(self.lr_args)  # some sort of args
+                lr = LR(**self.lr_params)  # some sort of args
                 lr.fit(X, Y)
                 self.Yhat = lr.predict(X)
                 self.W = lr.coef_.T
