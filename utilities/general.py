@@ -111,7 +111,7 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
     return val[:n], vec[:, :n]
 
 
-def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None):
+def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None, **kwargs):
     """Returns available statistics given provided data"""
     stats = {}
     if y is not None and yp is not None:
@@ -126,7 +126,12 @@ def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None):
         stats[r"$\ell_{regr}$"] = ((x - xr)**2).mean(axis=0).sum()
     if k is not None and kapprox is not None:
         error = np.linalg.norm(kapprox - k)**2 / np.linalg.norm(k)**2.0
-        stats["Error in the Kernel Approx."] = error
+        stats[r"$\ell_{gram}$"] = error
+
+    # allow for manual input of statistics (for kpcovr error)
+    for k in kwargs:
+        stats[k] = kwargs[k]
+
     return stats
 
 
