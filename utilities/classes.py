@@ -1204,7 +1204,37 @@ class KPCovR(PCovRBase, Kernelized):
 
             return T, Yp, Xr
 
-    def loss(self, X=None, Y=None, K=None):
+    def lkpcovr(self, X=None, Y=None, K_test=None, K_testtest=None):
+
+        if K_test is None and self.X is not None:
+            K_test = self.kernel(X, self.X)
+            K_test = center_kernel(K_test, reference=self.K)
+        elif K_test is None:
+            raise ValueError(
+                "Must provide a kernel or a feature vector, in which case the "
+                "train features should be available in the class"
+            )
+
+        if(K_testtest is None and X is not None):
+            K_testtest = self.kernel(X, X)
+            K_testtest = (K_testtest - np.mean(K_test.T, axis=0)
+                          - np.mean(K_test, axis=1).reshape(-1, 1)
+                          + np.mean(self.K))
+        else:
+            raise ValueError(
+                "Must provide a kernel between test features or a feature vector."
+            )
+
+        T_train = self.K @ self.PKT
+        T_test = K_test @ self.PKT
+        TTT = np.linalg.pinv(T_train.T @ T_train)
+
+        return ((np.trace(K_testtest) -
+                 2 * np.trace(K_test @ T_train @ TTT @ T_test.T) +
+                 np.trace(T_train @ TTT @ (T_test.T @ T_test) @ self.PTK)) /
+                 np.trace(K_testtest))
+
+    def loss(self, X=None, Y=None, K=None, K_testtest=None):
         if K is None and self.X is not None:
             K = self.kernel(X, self.X)
 
@@ -1216,14 +1246,12 @@ class KPCovR(PCovRBase, Kernelized):
             )
 
         T, Yp, Xr = self.transform(X=X, K=K)
-        Kapprox = T @ self.PTK
 
-        Lkpca = np.linalg.norm(K - Kapprox)**2 / np.linalg.norm(K)**2
-        Lkrr = np.linalg.norm(Y - Yp)**2 / np.linalg.norm(Y)**2
+        Lregr = np.linalg.norm(Y - Yp)**2 / np.linalg.norm(Y)**2
+        Lproj = self.lkpcovr(X=X, Y=Y, K_test=K, K_testtest=K_testtest)
+        return Lproj, Lregr
 
-        return Lkpca, Lkrr
-
-    def statistics(self, X, Y, K=None):
+    def statistics(self, X, Y, K=None, K_testtest=None):
         """
         Computes the loss values and reconstruction errors for
         KPCovR for the given predictor and response variables
@@ -1244,8 +1272,10 @@ class KPCovR(PCovRBase, Kernelized):
 
         Kapprox = T @ self.PTK
 
+        stats = {r"$\ell_{proj}$": self.lkpcovr(X=X, Y=Y, K_test=K, K_testtest=K_testtest)}
+
         return get_stats(x=X, y=Y, yp=Yp, t=T, xr=Xr,
-                         k=K, kapprox=Kapprox)
+                         k=K, kapprox=Kapprox, **stats)
 
 
 class SparseKPCovR(PCovRBase, Sparsified):
