@@ -169,12 +169,12 @@ def calculate_variables(
         **kwargs):
     """Loads necessary data for the tutorials"""
 
-    print(len(indices), " frames in total.")
+    print(len(indices), "frames in total.")
     print("Shape of Input Data is ", X.shape, ".")
 
     if n_FPS is not None:
         fps_idxs, _ = FPS(X.T, n_FPS)
-        print("Taking a subsampling of ", n_FPS, " columns")
+        print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
     try:
