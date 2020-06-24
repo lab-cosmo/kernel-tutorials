@@ -117,14 +117,14 @@ def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None):
     stats = {}
     if y is not None and yp is not None:
         stats["Coefficient of Determination<br>($R^2$)"] = calc_R2(y, yp)
-        stats["Regression Error"] = np.linalg.norm(y - yp) / y.shape[0]
+        stats["$\ell_{proj}$"] = np.linalg.norm(y - yp) / y.shape[0]
     if x is not None and t is not None:
         stats[r"Dataset Variance<br>$\sigma_X^2$"] = x.var(axis=0).sum()
         stats[r"Projection Variance<br>$\sigma_T^2$"] = t.var(axis=0).sum()
         error = x.var(axis=0).sum() - t.var(axis=0).sum()
         stats[r"Residual Variance<br>$\sigma_X^2 - \sigma_T^2$"] = error
     if x is not None and xr is not None:
-        stats[r"Representation Error"] = ((x - xr)**2).mean(axis=0).sum()
+        stats[r"$\ell_{regr}$"] = ((x - xr)**2).mean(axis=0).sum()
     if k is not None and kapprox is not None:
         error = np.linalg.norm(kapprox - k)**2 / np.linalg.norm(k)**2.0
         stats["Error in the Kernel Approx."] = error
@@ -164,12 +164,12 @@ def calculate_variables(
         **kwargs):
     """Loads necessary data for the tutorials"""
 
-    print(len(indices), " frames in total.")
+    print(len(indices), "frames in total.")
     print("Shape of Input Data is ", X.shape, ".")
 
     if n_FPS is not None:
         fps_idxs, _ = FPS(X.T, n_FPS)
-        print("Taking a subsampling of ", n_FPS, " columns")
+        print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
     try:
