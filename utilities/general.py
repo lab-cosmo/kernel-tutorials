@@ -61,7 +61,7 @@ def FPS(X, n=0, idx=None):
         # Set distances to minimum among the last two selected points
         d1 = np.minimum(d1, d2)
 
-        if d1.max() == 0.0:
+        if np.abs(d1).max() == 0.0:
             print("Only {} FPS Possible".format(i))
             return fps_idxs[:i], d[:i]
 
