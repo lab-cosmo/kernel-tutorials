@@ -81,7 +81,7 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
                 
         self.n_samples_seen_ = K.shape[0]
         if self.__sparse_kernel:
-            if K_shape[1] != self.n_active_:
+            if K.shape[1] != self.n_active_:
                 raise ValueError("For sparse kernels, K should be train-active set kernel. ")
         elif K.shape[0] != K.shape[1]:
             raise ValueError("K should be the square, train set kernel. ")
@@ -128,12 +128,10 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
                 if K_test.shape[1] != self.n_samples_seen_:
                     raise ValueError("Test kernel must have n_train as second dimension")
                 if self.__with_mean:
-                    print(self.K_train_row_mean_)
-                    print(K_test.mean(axis=0))
                     K_std += self.K_train_mean_ - np.add.outer(K_test.mean(axis=1), self.K_train_row_mean_)          
             else:
                 K_rows, K_cols = K_test_train
-                K_std += self.K_train_mean_ - np.add.outer( K_rows.mean(axis=0), K_cols.mean(axis=0) )
+                K_std += self.K_train_mean_ - np.add.outer( K_rows.mean(axis=1), K_cols.mean(axis=0) )
         if self.__with_norm:
             K_std *= self.scale_
             
