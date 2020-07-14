@@ -87,6 +87,7 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
             raise ValueError("K should be the square, train set kernel. ")
         
         self.K_train_mean_ = 0
+        self.K_train_row_mean_ = 0
         
         K_diag = K.diagonal().copy()
         if self.__with_mean:
@@ -98,8 +99,9 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
         self.scale_ = 1.0
         if self.__with_norm:
             if self.__sparse_kernel:
+                K_centered = K - self.K_train_row_mean_
                 var = np.sqrt( 
-                        np.trace(K@np.linalg.lstsq(K_active, K.T, self.__rcond)[0])/
+                        np.trace(K_centered@np.linalg.lstsq(K_active, K_centered.T, self.__rcond)[0])/
                         self.n_samples_seen_
                         )
             else:
