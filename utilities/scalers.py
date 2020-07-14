@@ -57,8 +57,8 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
     
     def __init__(self, *, with_mean=True, with_norm=True, rcond=None):
         """ Initialize KernelNormalizer. Defines whether it will subtract mean
-        (with_mean=True), apply normalization (with_norm=True) and whether it will
-        normalize each feature separately (per_feature=True). """
+        (with_mean=True), apply normalization (with_norm=True). The LSTSQ eigenvector cutoff
+        applied to invert the active-set kernel in the sparse case is given by rcond. """
         
         self.__with_mean = with_mean
         self.__with_norm = with_norm
@@ -70,7 +70,7 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
     def fit(self, K, y=None, K_active=None):
         """ Compute mean and scaling to be applied to kernels. If K_active is given,
         then it works under the assumption we are dealing with sparse, Nystroem approximation
-        kernels. K is then the n_sampex x n_active train set matrix. 
+        kernels. K is then the n_train x n_active train set matrix. 
         Otherwise, K should be the n_train x n_train full train set matrix. """        
         
         if K_active is not None:
@@ -110,8 +110,15 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
 
     def transform(self, K_test, y=None, K_test_train = None):
         """ Normalize a test kernel based on previously computed mean and scaling. 
-        It can also normalize an arbitrary kernel matrix provided one gives the kernels 
-        between rows and columns and the train set, with K_test_train = (K_test_rows_train, K_test_cols_train).
+        Should be called in different ways depending on the situation. 
+        If you have full kernel learning, and the test kernel is between a test set and 
+        the train set just call with
+        transform(K_test)   # K_test is n_test x n_train
+        If you have a kernel between two arbitrary sets A and B, you need to provide
+        transform(K_AB, K_test_train(K_Atrain, K_Btrain)
+        If you have a sparse kernel framework, then you need to provide the kernel matrix
+        between test and active points
+        transform(K_test)   # K_test is n_test x n_active        
         """
         
         if self.n_samples_seen_ == 0 :
@@ -132,6 +139,7 @@ class KernelNormalizer(TransformerMixin, BaseEstimator):
             else:
                 K_rows, K_cols = K_test_train
                 K_std += self.K_train_mean_ - np.add.outer( K_rows.mean(axis=1), K_cols.mean(axis=0) )
+
         if self.__with_norm:
             K_std *= self.scale_
             
