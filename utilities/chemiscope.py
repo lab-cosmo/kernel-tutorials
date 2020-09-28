@@ -16,7 +16,7 @@ def _typetransform(data):
         except ValueError:
             raise Exception('unsupported type in property')
 
-
+        
 def _linearize(name, values):
     '''
     Transform 2D arrays in multiple 1D arrays, converting types to fit json as
@@ -62,6 +62,9 @@ def _generate_environments(frames, cutoff):
     return environments
 
 
+
+
+
 def chemiscope_input(meta, frames, projection, prediction,
                      properties, property_names=None,
                      untrained_properties=None, untrained_property_names=None,
@@ -91,27 +94,23 @@ def chemiscope_input(meta, frames, projection, prediction,
 
     .. _`ase.Atoms`: https://wiki.fysik.dtu.dk/ase/ase/atoms.html
     '''
-
     data = {
         'meta': {
             'name': meta['name'],
-            'description': meta.get('description', None),
-            'authors': meta.get('authors', None),
-            'references': meta.get('references', None),
+            'description': meta.get('description'," "),
+            'authors': meta.get('authors',[]),
+            'references': meta.get('references',[]),
         }
     }
-
     projection = np.asarray(projection)
     prediction = np.asarray(prediction)
     property = np.asarray(properties)
-
     if not property_names:
         property_names = [f'property_{i}' for i in range(properties.shape[1])]
 
     assert projection.shape[0] == prediction.shape[0]
     assert projection.shape[0] == property.shape[0]
-    assert len(property_names) == properties.shape[1]
-
+    assert len(property_names) == property.shape[1]
     n_atoms = sum(len(f) for f in frames)
 
     if projection.shape[0] == len(frames):
