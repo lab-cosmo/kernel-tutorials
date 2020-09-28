@@ -698,10 +698,12 @@ class SparseKPCA(Sparsified, Decomposition):
     def __init__(self, n_PC, *args, **kwargs):
         super(SparseKPCA, self).__init__(n_PC=n_PC, *args, **kwargs)
 
-    def fit(self, X, Kmm=None, Knm=None, *args, **kwargs):
+    def fit(self, X=None, Kmm=None, Knm=None, *args, **kwargs):
         # *args left in for backwards compatibility
 
-        X, _, _ = self.preprocess(X=X, X_ref=X)
+        if X is None:
+            assert (Knm is not None and Kmm is not None)
+            X, _, _ = self.preprocess(X=X, X_ref=X)
 
         if Kmm is None or Knm is None:
             i_sparse, _ = FPS(X, self.n_active)
@@ -734,9 +736,11 @@ class SparseKPCA(Sparsified, Decomposition):
 
         self.PKT = U_active @ U_C[:, :self.n_PC]
         T = Knm @ self.PKT
-        self.PTX = np.diagflat(eig_inv(v_C[:self.n_PC])) @ T.T @ X
 
-    def transform(self, X, Knm=None):
+        if X is not None:
+            self.PTX = np.diagflat(eig_inv(v_C[:self.n_PC])) @ T.T @ X
+
+    def transform(self, X=None, Knm=None):
         X, _, Knm = self.preprocess(X=X, K=Knm)
 
         if self.PKT is None:
@@ -760,8 +764,12 @@ class SparseKPCA(Sparsified, Decomposition):
             # TODO: need to change this for the new centering?
             K_test = center_kernel(K_test)
 
-        Xr = T @ self.PTX
-        Xr, _ = self.postprocess(X=Xr)
+
+        if self.PTX is not None:
+            Xr = T @ self.PTX
+            Xr, _ = self.postprocess(X=Xr)
+        else:
+            Xr = None
 
         return get_stats(k=K_test, kapprox=Kapprox, x=X, xr=Xr, t=T)
 
