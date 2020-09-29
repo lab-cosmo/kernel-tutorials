@@ -1,11 +1,10 @@
 import numpy as np
 from .general import FPS, get_stats, sorted_eig, eig_inv
-from .kernels import linear_kernel, center_kernel, gaussian_kernel, summed_kernel
+from .kernels import linear_kernel, center_kernel, gaussian_kernel
 
 kernels = {
     "gaussian": gaussian_kernel,
-    "linear": linear_kernel,
-    "summed_gaussian": lambda x1, x2: summed_kernel(x1, x2, gaussian_kernel)
+    "linear": linear_kernel
 }
 
 

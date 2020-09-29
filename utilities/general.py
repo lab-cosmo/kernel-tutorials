@@ -4,13 +4,14 @@ from sklearn.metrics import r2_score as calc_R2
 from .kernels import gaussian_kernel, center_kernel
 
 
-def eig_inv(v):
-    """ A more robust way to find the inverse eigenvalues """
-    return np.array([np.linalg.pinv([[vv]])[0][0] for vv in v])
+def eig_inv(v, rcond=1e-14):
+    """ Inverse of a list (typically of eigenvalues) with thresholding à la pinv """
+    thresh = v.max() * rcond
+    return np.array([(1/vv if vv>thresh else 0.0) for vv in v])
 
 
 def normalize_matrix(A, scale=None):
-    """ Normalize a matrix so that it has unit variance """
+    """ Normalize a matrix so that its entries have unit variance """
     if scale is None:
         scale = np.linalg.norm(A) / np.sqrt(len(A))
     return A / scale
@@ -60,7 +61,7 @@ def FPS(X, n=0, idx=None):
         # Set distances to minimum among the last two selected points
         d1 = np.minimum(d1, d2)
 
-        if d1.max() == 0.0:
+        if np.abs(d1).max() == 0.0:
             print("Only {} FPS Possible".format(i))
             return fps_idxs[:i], d[:i]
 
@@ -168,12 +169,12 @@ def calculate_variables(
         **kwargs):
     """Loads necessary data for the tutorials"""
 
-    print(len(indices), " frames in total.")
+    print(len(indices), "frames in total.")
     print("Shape of Input Data is ", X.shape, ".")
 
     if n_FPS is not None:
         fps_idxs, _ = FPS(X.T, n_FPS)
-        print("Taking a subsampling of ", n_FPS, " columns")
+        print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
     try:
@@ -193,7 +194,7 @@ def calculate_variables(
     Y_test = Y[i_test]
 
     Y_center = Y_train.mean(axis=0)
-    Y_scale = np.linalg.norm(Y_train - Y_center) / np.sqrt(n_train)
+    Y_scale = np.linalg.norm(Y_train - Y_center, axis=0) / np.sqrt(n_train / Y_train.shape[1])
 
     Y = center_matrix(Y, center=Y_center)
     Y_train = center_matrix(Y_train, center=Y_center)
@@ -203,40 +204,32 @@ def calculate_variables(
 
     if len(Y) == len(indices):
         print("Computing training/testing sets from summed environment-centered soap vectors.")
-        X_center = X.mean(axis=0)
-        X = center_matrix(X, center=X_center)
-
-        X_scale = np.linalg.norm(X) / np.sqrt(X.shape[0])
-        X = normalize_matrix(X, scale=X_scale)
-
         frame_starts = [sum(nat[:i]) for i in range(len(n_atoms) + 1)]
-        X_split = np.array([
+        X_split = [
             X[frame_starts[i]:frame_starts[i + 1]]
             for i in range(len(indices))
-        ])
+        ]
 
-        X_work = np.array([np.sum(xs, axis=0) for xs in X_split])
-        X_train = X_work[i_train]
-        X_test = X_work[i_test]
-
-    else:
+        X = np.array([np.mean(xs, axis=0) for xs in X_split])
         X_train = X[i_train]
         X_test = X[i_test]
 
-        X_center = X_train.mean(axis=0)
-
-        X = center_matrix(X, center=X_center)
-
-        X_scale = np.linalg.norm(X_train) / np.sqrt(n_train)
-        X = normalize_matrix(X, scale=X_scale)
-
+    else:
         X_split = X.copy()
+
+        X_train = X[i_train]
+        X_test = X[i_test]
+
+    X_center = X_train.mean(axis=0)
+    X_scale = np.linalg.norm(X_train - X_center) / np.sqrt(n_train)
 
     X_train = center_matrix(X_train, center=X_center)
     X_test = center_matrix(X_test, center=X_center)
+    X = center_matrix(X, center=X_center)
 
     X_train = normalize_matrix(X_train, scale=X_scale)
     X_test = normalize_matrix(X_test, scale=X_scale)
+    X = normalize_matrix(X, scale=X_scale)
 
     try:
         print("Shape of kernel is: ", K_train.shape, ".")
@@ -244,18 +237,23 @@ def calculate_variables(
         if len(Y) == len(indices):
             print("Computing kernels from summing kernels of environment-centered soap vectors.")
 
-            K_train = summed_kernel(X_split[i_train], X_split[i_train], kernel_func)
-            K_test = summed_kernel(X_split[i_test], X_split[i_train], kernel_func)
+            K_train = kernel_func([X_split[i] for i in i_train], 
+                    [X_split[i] for i in i_train])
+            K_test = kernel_func([X_split[i] for i in i_test], 
+                    [X_split[i] for i in i_train])
 
-            K_test = center_kernel(K_test, reference=K_train)
-            K_train = center_kernel(K_train)
         else:
 
-            K_test = kernel_func(X_split[i_test], X_split[i_train])
             K_train = kernel_func(X_split[i_train], X_split[i_train])
+            K_test = kernel_func(X_split[i_test], X_split[i_train])
 
-            K_test = center_kernel(K_test, reference=K_train)
-            K_train = center_kernel(K_train)
+    K_test = center_kernel(K_test, reference=K_train)
+    K_train = center_kernel(K_train)
+
+    K_scale = np.trace(K_train) / K_train.shape[0]
+
+    K_train = normalize_matrix(K_train, scale=K_scale)
+    K_test = normalize_matrix(K_test, scale=K_scale)
 
     n_train = len(X_train)
     n_test = len(X_test)
