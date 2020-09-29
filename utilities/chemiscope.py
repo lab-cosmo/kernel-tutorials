@@ -16,7 +16,7 @@ def _typetransform(data):
         except ValueError:
             raise Exception('unsupported type in property')
 
-        
+
 def _linearize(name, values):
     '''
     Transform 2D arrays in multiple 1D arrays, converting types to fit json as
@@ -62,14 +62,11 @@ def _generate_environments(frames, cutoff):
     return environments
 
 
-
-
-
 def chemiscope_input(meta, frames, projection, prediction,
                      properties, property_names=None,
                      untrained_properties=None, untrained_property_names=None,
                      cutoff=None,
-                    ):
+                     ):
     '''
     Get a dictionary which can be saved as JSON and used as input data for the
     chemiscope visualizer (https://chemiscope.org).
@@ -97,9 +94,9 @@ def chemiscope_input(meta, frames, projection, prediction,
     data = {
         'meta': {
             'name': meta['name'],
-            'description': meta.get('description'," "),
-            'authors': meta.get('authors',[]),
-            'references': meta.get('references',[]),
+            'description': meta.get('description', " "),
+            'authors': meta.get('authors', []),
+            'references': meta.get('references', []),
         }
     }
     projection = np.asarray(projection)
@@ -128,18 +125,22 @@ def chemiscope_input(meta, frames, projection, prediction,
         result[name] = {"target": target, "values": values}
 
     for i, property_name in enumerate(property_names):
-        for name, values in _linearize(property_name, properties[:, i]).items():
+        for name, values in _linearize(
+                property_name, properties[:, i]).items():
             result[name] = {"target": target, "values": values}
 
-        for name, values in _linearize("predicted {}".format(property_name), prediction[:, i]).items():
+        for name, values in _linearize("predicted {}".format(
+                property_name), prediction[:, i]).items():
             result[name] = {"target": target, "values": values}
 
-        for name, values in _linearize("{} error".format(property_name), error[:, i]).items():
+        for name, values in _linearize(
+                "{} error".format(property_name), error[:, i]).items():
             result[name] = {"target": target, "values": values}
 
     if(untrained_property_names is not None):
         for i, property_name in enumerate(untrained_property_names):
-            for name, values in _linearize(property_name, untrained_properties[:, i]).items():
+            for name, values in _linearize(
+                    property_name, untrained_properties[:, i]).items():
                 result[name] = {"target": target, "values": values}
 
     data['properties'] = result
