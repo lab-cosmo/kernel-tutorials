@@ -91,12 +91,10 @@ def chemiscope_input(meta, frames, projection, prediction,
 
     .. _`ase.Atoms`: https://wiki.fysik.dtu.dk/ase/ase/atoms.html
     '''
+    AUTHORIZED_KEYS = ["name", "description", "authors", "references"]
     data = {
         'meta': {
-            'name': meta['name'],
-            'description': meta.get('description', " "),
-            'authors': meta.get('authors', []),
-            'references': meta.get('references', []),
+            key: value for key, value in meta.items() if key in AUTHORIZED_KEYS
         }
     }
     projection = np.asarray(projection)
