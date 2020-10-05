@@ -97,9 +97,11 @@ def chemiscope_input(meta, frames, projection, prediction,
             key: value for key, value in meta.items() if key in AUTHORIZED_KEYS
         }
     }
+    
     projection = np.asarray(projection)
     prediction = np.asarray(prediction)
     property = np.asarray(properties)
+    
     if not property_names:
         property_names = [f'property_{i}' for i in range(properties.shape[1])]
 
