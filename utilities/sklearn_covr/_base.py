@@ -5,6 +5,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
 from scipy.sparse.linalg import eigs
 
+
 class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCMeta):
     """
     Super-class defined for PCovR style methods
@@ -102,10 +103,9 @@ class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCM
         A_transformed = np.dot(A, self.__dict__[projector])
         return A_transformed
 
-
     def _eig_solver(self, matrix, full_matrix=False):
-        if(full_matrix==False):
-            v, U= eigs(matrix, k=self.n_components, tol=self.tol)
+        if(full_matrix == False):
+            v, U = eigs(matrix, k=self.n_components, tol=self.tol)
         else:
             v, U = np.linalg.eig(matrix)
 
@@ -115,7 +115,7 @@ class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCM
         U = U[:, v > self.tol]
         v = v[v > self.tol]
 
-        if(len(v)==1):
-            U = U.reshape(-1,1)
+        if(len(v) == 1):
+            U = U.reshape(-1, 1)
 
         return v, U

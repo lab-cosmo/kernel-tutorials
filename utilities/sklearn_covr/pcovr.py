@@ -5,6 +5,7 @@ from numpy.linalg import multi_dot as mdot
 
 from ._base import _BasePCovR
 
+
 class PCovR(_BasePCovR):
     """
     Performs PCovR, detecting whether the data set is in Sample or Feature Space
@@ -63,7 +64,7 @@ class PCovR(_BasePCovR):
             self._fit_sample_space(X, Y)
 
         # placeholder for better scaling later
-        self.mean_ = np.mean(X, axis =0)
+        self.mean_ = np.mean(X, axis=0)
 
     def _compute_Yhat(self, X, Y):
         """
@@ -134,7 +135,6 @@ class PCovR(_BasePCovR):
         P_TY = Λ_K̃^(-1/2) U_K̃.T Y
 
         """
-
 
         Kt = (self.mixing * np.dot(X, X.T)) + \
              (1.0 - self.mixing) * np.dot(self.Yhat, self.Yhat.T)

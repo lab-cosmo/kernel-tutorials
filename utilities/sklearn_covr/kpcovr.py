@@ -1,13 +1,13 @@
 import numpy as np
 from sklearn.kernel_ridge import KernelRidge as KRR
 from sklearn.utils.validation import check_X_y
-from scipy.sparse.linalg import eigs
 from numpy.linalg import multi_dot as mdot
 
 from ._base import _BasePCovR
 from sklearn.preprocessing import KernelCenterer
 from sklearn.metrics.pairwise import pairwise_kernels
 from sklearn.exceptions import NotFittedError
+
 
 class KernelPCovR(_BasePCovR):
     """
@@ -139,13 +139,13 @@ class KernelPCovR(_BasePCovR):
                  tol=0, max_iter=None, remove_zero_eig=False,
                  random_state=None, copy_X=True, n_jobs=None,
                  krr_params={}
-                ):
+                 ):
         if fit_inverse_transform and kernel == 'precomputed':
             raise ValueError(
                 "Cannot fit_inverse_transform with a precomputed kernel.")
 
         super().__init__(mixing=mixing, n_components=n_components,
-                tol=tol)
+                         tol=tol)
 
         self.mixing = mixing
         self.krr_params = krr_params
@@ -184,24 +184,25 @@ class KernelPCovR(_BasePCovR):
                                 filter_params=True, n_jobs=self.n_jobs,
                                 **params)
 
-
     def _fit_transform(self, K):
         """ Fit's using kernel K"""
         # center kernel
         K = self._centerer.fit_transform(K)
 
-        Kt = self.mixing * K + (1 - self.mixing) * np.matmul(self.Yhat, self.Yhat.T)
+        Kt = self.mixing * K + (1 - self.mixing) * \
+            np.matmul(self.Yhat, self.Yhat.T)
 
         if self.n_components is None:
             n_components = Kt.shape[0]
         else:
             n_components = min(Kt.shape[0], self.n_components)
 
+        # by designating `full_matrix=False` the eig_solver will truncate to n_components
         v, U = self._eig_solver(Kt, full_matrix=False)
 
         P_krr = np.matmul(self.W, self.Yhat.T)
 
-        P_kpca = np.eye(Kt.shape[0]) #/ (np.trace(K) / K.shape[0])
+        P_kpca = np.eye(Kt.shape[0])  # / (np.trace(K) / K.shape[0])
 
         P = (self.mixing * P_kpca) + (1.0 - self.mixing) * P_krr
 
@@ -231,7 +232,8 @@ class KernelPCovR(_BasePCovR):
             if self.W is not None:
                 self.Yhat = np.dot(K, self.W)
             else:
-                krr = KRR(kernel='precomputed', **self.krr_params)  # some sort of args
+                # some sort of args
+                krr = KRR(kernel='precomputed', **self.krr_params)
                 krr.fit(K, Y)
                 self.Yhat = krr.predict(K)
                 self.W = krr.dual_coef_
@@ -239,12 +241,11 @@ class KernelPCovR(_BasePCovR):
         if self.W is None:
             self.W = np.linalg.lstsq(K, self.Yhat)[0]
 
-
     def fit(self, X, Y, Yhat=None, W=None):
 
         X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
 
-        self._centerer = KernelCenterer() # todo  place our centerer
+        self._centerer = KernelCenterer()  # todo  place our centerer
 
         K = self._get_kernel(X)
 
@@ -301,8 +302,6 @@ class KernelPCovR(_BasePCovR):
                                  "the inverse transform is not available.")
 
         return self._project(T, 'ptx_')
-
-
 
     def predict(self, X):
         """Transform X into the regression Y.
