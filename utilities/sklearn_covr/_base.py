@@ -97,7 +97,7 @@ class _BasePCovR(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABCM
 
         >>> todo
         """
-        check_is_fitted(self)
+        check_is_fitted(self, projector)
 
         A = check_array(A)
         A_transformed = np.dot(A, self.__dict__[projector])
