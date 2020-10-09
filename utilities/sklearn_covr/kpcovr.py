@@ -177,8 +177,6 @@ class KernelPCovR(_BasePCovR):
 
     def _fit_transform(self, K):
         """ Fit's using kernel K"""
-        # center kernel
-        K = self._centerer.fit_transform(K)
 
         Kt = self.mixing * K + (1 - self.mixing) * \
             np.matmul(self.Yhat, self.Yhat.T)
@@ -232,13 +230,16 @@ class KernelPCovR(_BasePCovR):
         if self.W is None:
             self.W = np.linalg.lstsq(K, self.Yhat)[0]
 
-    def fit(self, X, Y, Yhat=None, W=None):
+    def fit(self, X, Y, Yhat=None, W=None, K=None):
 
         X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
 
-        self._centerer = KernelCenterer()  # todo  place our centerer
+        if(K is None):
+            K = self._get_kernel(X)
 
-        K = self._get_kernel(X)
+        self._centerer = KernelCenterer()
+        self._centerer.fit(K)
+        K = self._centerer.transform(K)
 
         self.Yhat = Yhat
         self.W = W
@@ -255,7 +256,7 @@ class KernelPCovR(_BasePCovR):
 
         self.X_fit_ = X
 
-    def transform(self, X):
+    def transform(self, X=None, K=None):
         """Transform X.
 
         Parameters
@@ -267,8 +268,15 @@ class KernelPCovR(_BasePCovR):
         X_new : array-like, shape (n_samples, n_components)
         """
 
-        # Compute centered gram matrix between X and training data X_fit_
-        K = self._centerer.transform(self._get_kernel(X, self.X_fit_))
+        assert(X is not None or K is not None)
+
+        if(K is None):
+            # Compute centered gram matrix between X and training data X_fit_
+            try:
+                K = self._centerer.transform(self._get_kernel(X, self.X_fit_))
+            except AttributeError:
+                raise NotFittedError("The model has not yet been fitted to a ",
+                                     "training kernel.")
 
         return self._project(K, 'pkt_')
 
@@ -294,7 +302,7 @@ class KernelPCovR(_BasePCovR):
 
         return self._project(T, 'ptx_')
 
-    def predict(self, X):
+    def predict(self, X=None, K=None):
         """Transform X into the regression Y.
 
         Parameters
@@ -306,8 +314,5 @@ class KernelPCovR(_BasePCovR):
         Y : array-like, shape (n_samples, n_properties)
         """
 
-        # Compute centered gram matrix between X and training data X_fit_
-        # K = self._centerer.transform(self._get_kernel(X, self.X_fit_))
-
-        T = self.transform(X)
+        T = self.transform(X=X, K=K)
         return self._project(T, 'pty_')
