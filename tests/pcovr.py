@@ -1,58 +1,13 @@
-import numpy as np
-from sklearn import exceptions
-from sklearn.utils.validation import check_X_y
-
+import unittest
 from utilities.sklearn_covr.pcovr import PCovR
+import _base
 
 
-def run_tests():
-    data = np.load('./tests/CSD-test.npz')
-    X = data["X"]
-    Y = data["Y"]
-
-    # Basic Test of PCovR Errors
-    lr_errors = np.nan * np.zeros(21)
-    pca_errors = np.nan * np.zeros(21)
-    for i, mixing in enumerate(np.linspace(0, 1, 21)):
-        pcovr = PCovR(mixing=mixing,
-                      n_components=2,
-                      regularization=1e-6,
-                      full_eig=False,
-                      tol=1e-12)
-        pcovr.fit(X, Y)
-
-        T = pcovr.transform(X)
-        Xr = pcovr.inverse_transform(T)
-        Yp = pcovr.predict(X)
-        lr_errors[i] = np.linalg.norm(Y-Yp)**2.0 / np.linalg.norm(Y)**2.0
-        pca_errors[i] = np.linalg.norm(X-Xr)**2.0 / np.linalg.norm(X)**2.0
-
-        assert not np.isnan(lr_errors[i]) and not np.isnan(pca_errors[i])
-        print(f"Passed α = {round(mixing,4)}", end='\r')
-
-    assert all(lr_errors[i] <= lr_errors[i+1] and pca_errors[i]
-               >= pca_errors[i+1]for i in range(len(lr_errors)-1))
-
-    # Test of PCovR Fitting
-    pcovr = PCovR(mixing=0.5,
-                  n_components=2,
-                  regularization=1e-6,
-                  tol=1e-12)
-
-    try:
-        T = pcovr.transform(X)
-    except exceptions.NotFittedError:
-        print("Premature transformation failed in expected manner")
-
-    # Test of T shape
-    pcovr.fit(X, Y)
-    T = pcovr.transform(X)
-
-    assert check_X_y(X, T, multi_output=True)
-
-    # Test of improperly shaped X and Y
+class PCovRTest(_base.PCovRTestBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = lambda mixing, **kwargs: PCovR(mixing, full_eig=False, regularization=1E-8, **kwargs)
 
 
 if __name__ == "__main__":
-    run_tests()
-    print("Everything passed")
+    unittest.main()
