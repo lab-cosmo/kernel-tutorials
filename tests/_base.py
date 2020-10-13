@@ -93,7 +93,7 @@ class PCovRTestBase(unittest.TestCase):
                 pca1 = round(self.pca_errors[i], self.rounding)
                 pca2 = round(self.pca_errors[i+1], self.rounding)
                 self.assertTrue(pca1 >= pca2,
-                                msg=f'PCA Error Non-Monotonic\n {pca1} >  {pca2}'
+                                msg=f'PCA Error Non-Monotonic\n {pca1} < {pca2}'
                                 )
 
     # Checks that the model will not transform before fitting
