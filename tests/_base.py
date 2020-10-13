@@ -103,7 +103,7 @@ class PCovRTestBase(unittest.TestCase):
                            tol=1E-12)
         with self.assertRaises(exceptions.NotFittedError):
             if(self.K is not None):
-                _ = model.transform(self.X, K=self.X)
+                _ = model.transform(self.X, K=self.K)
             else:
                 _ = model.transform(self.X)
 
