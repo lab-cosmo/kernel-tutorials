@@ -167,7 +167,14 @@ class PCovR(_BasePCovR):
 
         self._fit(X, Y)
 
-    # todo fit_transform and fit_predict
+def fit_transform(self, X, Y, Yhat=None, W=None):
+        #return projection in latent spase, targets and the reconstructed input data
+        self.fit(X,Y, Yhat, W)
+        T = self._project(X, 'pxt_')
+        return T
+def fit_predict(self, X, Y, Yhat=None, W=None):
+        self.fit( X, Y, Yhat, W )
+        return self.predict(X)
 
     def transform(self, X):
         # we should be ready to scale and center if necessary
