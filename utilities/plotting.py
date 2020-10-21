@@ -215,7 +215,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
 
     kwargs['cbar_title'] = kwargs.get('cbar_title', "Loss")
     kwargs['x_label'] = kwargs.get('x_label', r'$Y$')
-    kwargs['y_label'] = kwargs.get('y_label', r'$Xw$')
+    kwargs['y_label'] = kwargs.get('y_label', r'$\hat{Y}$')
     kwargs['title'] = kwargs.get('title', None)
 
     plot_points = np.add(np.multiply(Y_scale, [Y, Yp]), Y_center)
