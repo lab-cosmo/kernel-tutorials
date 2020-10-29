@@ -153,9 +153,11 @@ def _compute_gfrd(features, features_dash, reconstruction_matrix):
     """
     # P_{FF'} = U Σ V^T
     U, S, _ = np.linalg.svd(reconstruction_matrix)
+    if (features.shape[1] > features_dash.shape[1]):
+        S = np.hstack( (S, np.zeros(features.shape[1]-features_dash.shape[1])) )
 
     # \tilde{X}_F = X_F U
-    tilde_features = features.dot(U)[:, :len(S)]
+    tilde_features = features.dot(U)
     # \tilde{X}_{F'} = X_F P_{FF'} V = X_F U Σ
     tilde_features_dash = tilde_features.dot(np.diag(S))
 
@@ -261,24 +263,28 @@ def compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validat
                                                               2, axis=1)[:, np.newaxis] - 2 * features_test.dot(features_train.T)
     pointwise_lfre = np.zeros(n_test)
     for i in range(n_test):
-        # LLE-inspired LFRE
         local_env_idx = np.argsort(squared_dist[i])[:nb_local_envs]
+        # D_{k-neigh}^{(i)}
         local_features_train = features_train[local_env_idx]
+        # \bar{x}_F
         local_features_train_mean = np.mean(
             features_train[local_env_idx], axis=0)
+        # D_{k-neigh}^{(i)}
         local_features_dash_train = features_dash_train[local_env_idx]
+        # \bar{x}_F'
         local_features_dash_train_mean = np.mean(
             features_dash_train[local_env_idx], axis=0)
-        # standardize
+        # P_{FF'}
         reconstruction_matrix = compute_reconstruction_matrix(
             local_features_train - local_features_train_mean, local_features_dash_train -
             local_features_dash_train_mean, nb_folds
         )
-        # \|x_i' - \tilde{x}_i' \|
+        # \tilde{x}_i' = \bar{x}_{F'} + (x_i - \bar{x}_F)P_{FF'}
+        tilde_x_i_dash_test = local_features_dash_train_mean + (features_test[i, :][np.newaxis, :] - local_features_train_mean).dot(
+                reconstruction_matrix)
+        # \|x_i' -  \tilde{x}_i'\|
         pointwise_lfre[i] = np.linalg.norm(
-            (features_test[i, :][np.newaxis, :] - local_features_train_mean).dot(
-                reconstruction_matrix) + local_features_dash_train_mean
-            - features_dash_test[i, :][np.newaxis, :]
+            features_dash_test[i, :][np.newaxis, :] - tilde_x_i_dash_test
         )
     return pointwise_lfre
 
@@ -303,4 +309,4 @@ def compute_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs
     lfre : double
         LFRE
     """
-    return np.linalg.norm(compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS))/np.sqrt(features.shape[0])
+    return np.linalg.norm(compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs=cross_validation_kwargs))/np.sqrt(features.shape[0])
