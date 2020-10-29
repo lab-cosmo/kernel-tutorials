@@ -1,5 +1,5 @@
 import numpy as np
-from utilities.scalers import NormalizeScaler
+from utilities.scalers import NormalizeScaler, KernelNormalizer
 
 # The code is based on methods presented in the paper TODO(currently in review process, will be added as soon as published)
 
@@ -10,14 +10,14 @@ DEFAULT_CROSS_VALIDATION_KWARGS = {
 
 def standardize_features(features, train_idx=None):
     """
-    Standardizes the features
+    Standardizes the features according to mean and variance of training set
 
     Parameters:
     ----------
     features : array_like
-        features, dimensions: samples x features
+        features, dimensions: nb samples x nb features
     train_idx : array_like
-        the training indices are only used for standardization
+        the training samples are only used to determine mean and variance
 
     Returns:
     --------
@@ -28,6 +28,25 @@ def standardize_features(features, train_idx=None):
         return NormalizeScaler().fit(features).transform(features)
     return NormalizeScaler().fit(features[train_idx]).transform(features)
 
+def standardize_kernel(kernel, train_idx=None):
+    """
+    Standardizes the kernel according to mean and variance of training set
+
+    Parameters:
+    ----------
+    kernel: array_like
+        features, dimensions: nb samples x nb samples
+    train_idx : array_like
+        the training samples are only used to determine mean and variance
+
+    Returns:
+    --------
+    standardized_kernel : array_like
+        standardized kernel
+    """
+    if train_idx is None:
+        KernelNormalizer().fit(kernel).transform(kernel)
+    return KernelNormalizer().fit(kernel[train_idx,:][:,train_idx]).transform(kernel, K_Atrain_and_Btrain=(kernel[:,train_idx], kernel[:,train_idx].T))
 
 def compute_reconstruction_matrix(features, features_dash, nb_folds):
     """
@@ -78,13 +97,13 @@ def compute_reconstruction_matrix(features, features_dash, nb_folds):
     return np.linalg.lstsq(features, features_dash, rcond=regularizers[min_idx])[0]
 
 
-def generate_train_test_idx(nb_samples, train_test_split, train_ratio, seed):
+def generate_train_test_idx(nb_samples, train_test_split, train_ratio, seed=None):
     idx = np.arange(nb_samples)
-    if seed is not None:
-        np.random.seed(seed)
-        np.random.shuffle(idx)
     if not(train_test_split):
         return idx, idx
+    if seed is not None:
+        np.random.seed(seed)
+    np.random.shuffle(idx)
     split_id = int(len(idx) * train_ratio)
     return idx[:split_id], idx[split_id:]
 
@@ -203,7 +222,7 @@ def _compute_gfrm(features, features_dash, compute_gfrm_func, cross_validation_k
     train_idx, test_idx = generate_train_test_idx(
         nb_samples, train_test_split, train_ratio, seed)
 
-    #  standardize
+    # standardize
     features = standardize_features(features, train_idx)
     features_dash = standardize_features(features_dash, train_idx)
 
@@ -244,7 +263,6 @@ def compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validat
     pointwise_lfre : array_like
         pointwise LFRE
     """
-
     train_test_split, train_ratio, seed, nb_folds = cross_validation_kwargs['train_test_split'], cross_validation_kwargs[
         'train_ratio'], cross_validation_kwargs['seed'], cross_validation_kwargs['nb_folds']
 
