@@ -1,7 +1,8 @@
 import numpy as np
 from utilities.scalers import NormalizeScaler, KernelNormalizer
 
-# The code is based on methods presented in the paper TODO(currently in review process, will be added as soon as published)
+# The code is based on methods presented in the paper TODO(currently in
+# review process, will be added as soon as published)
 
 # default cross validation parameters used for the paper
 DEFAULT_CROSS_VALIDATION_KWARGS = {
@@ -28,6 +29,7 @@ def standardize_features(features, train_idx=None):
         return NormalizeScaler().fit(features).transform(features)
     return NormalizeScaler().fit(features[train_idx]).transform(features)
 
+
 def standardize_kernel(kernel, train_idx=None):
     """
     Standardizes the kernel according to mean and variance of training set
@@ -46,7 +48,9 @@ def standardize_kernel(kernel, train_idx=None):
     """
     if train_idx is None:
         KernelNormalizer().fit(kernel).transform(kernel)
-    return KernelNormalizer().fit(kernel[train_idx,:][:,train_idx]).transform(kernel, K_Atrain_and_Btrain=(kernel[:,train_idx], kernel[:,train_idx].T))
+    return KernelNormalizer().fit(kernel[train_idx, :][:, train_idx]).transform(
+        kernel, K_Atrain_and_Btrain=(kernel[:, train_idx], kernel[:, train_idx].T))
+
 
 def compute_reconstruction_matrix(features, features_dash, nb_folds):
     """
@@ -67,13 +71,13 @@ def compute_reconstruction_matrix(features, features_dash, nb_folds):
         reconstruction matrix P_{FF'} = argmin_{P} | X_{F'} - (X_{F})P |
     """
 
-    fold_size = len(features)//nb_folds
+    fold_size = len(features) // nb_folds
     features_folds = [
-        features[i*fold_size:(i+1)*fold_size] for i in range(nb_folds-1)]
-    features_folds.append(features[(nb_folds-1)*fold_size:])
+        features[i * fold_size:(i + 1) * fold_size] for i in range(nb_folds - 1)]
+    features_folds.append(features[(nb_folds - 1) * fold_size:])
     features_dash_folds = [
-        features_dash[i*fold_size:(i+1)*fold_size] for i in range(nb_folds-1)]
-    features_dash_folds.append(features_dash[(nb_folds-1)*fold_size:])
+        features_dash[i * fold_size:(i + 1) * fold_size] for i in range(nb_folds - 1)]
+    features_dash_folds.append(features_dash[(nb_folds - 1) * fold_size:])
 
     def fold_test_error(regularizer):
         test_error = np.zeros(nb_folds)
@@ -94,10 +98,12 @@ def compute_reconstruction_matrix(features, features_dash, nb_folds):
     regularizers = np.hstack((np.geomspace(1e-9, 1e-1, 9), [0.5, 0.9, 1]))
     loss = [fold_test_error(reg) for reg in regularizers]
     min_idx = np.argmin(loss)
-    return np.linalg.lstsq(features, features_dash, rcond=regularizers[min_idx])[0]
+    return np.linalg.lstsq(features, features_dash,
+                           rcond=regularizers[min_idx])[0]
 
 
-def generate_train_test_idx(nb_samples, train_test_split, train_ratio, seed=None):
+def generate_train_test_idx(
+        nb_samples, train_test_split, train_ratio, seed=None):
     idx = np.arange(nb_samples)
     if not(train_test_split):
         return idx, idx
@@ -149,7 +155,8 @@ def _compute_pointwise_gfre(features, features_dash, reconstruction_matrix):
     poinwise_gfre: array_like
         pointwise GFRE(X_F, X_{F'})
     """
-    return np.linalg.norm(features.dot(reconstruction_matrix) - features_dash, axis=1)
+    return np.linalg.norm(features.dot(
+        reconstruction_matrix) - features_dash, axis=1)
 
 
 def _compute_gfrd(features, features_dash, reconstruction_matrix):
@@ -173,14 +180,19 @@ def _compute_gfrd(features, features_dash, reconstruction_matrix):
     # P_{FF'} = U Σ V^T
     U, S, _ = np.linalg.svd(reconstruction_matrix)
     if (features.shape[1] > features_dash.shape[1]):
-        S = np.hstack( (S, np.zeros(features.shape[1]-features_dash.shape[1])) )
+        S = np.hstack(
+            (S,
+             np.zeros(
+                 features.shape[1] -
+                 features_dash.shape[1])))
 
     # \tilde{X}_F = X_F U
     tilde_features = features.dot(U)
     # \tilde{X}_{F'} = X_F P_{FF'} V = X_F U Σ
     tilde_features_dash = tilde_features.dot(np.diag(S))
 
-    # Solution for the Procrustes problem (see https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem)
+    # Solution for the Procrustes problem (see
+    # https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem)
     tilde_U, tilde_S, tilde_VT = np.linalg.svd(
         tilde_features.T.dot(tilde_features_dash)
     )
@@ -188,10 +200,12 @@ def _compute_gfrd(features, features_dash, reconstruction_matrix):
 
     n_test = features.shape[0]
     # GFRD
-    return np.linalg.norm(tilde_features.dot(Q_FF_dash) - tilde_features_dash) / np.sqrt(n_test)
+    return np.linalg.norm(tilde_features.dot(
+        Q_FF_dash) - tilde_features_dash) / np.sqrt(n_test)
 
 
-def _compute_gfrm(features, features_dash, compute_gfrm_func, cross_validation_kwargs):
+def _compute_gfrm(features, features_dash, compute_gfrm_func,
+                  cross_validation_kwargs):
     """
     Computes a GFRM (global feature space reconstruction measure) including GFRE, pointwise GFRE and GFRD.
     Wrapper function for the cross validation steps required for all measures.
@@ -205,7 +219,7 @@ def _compute_gfrm(features, features_dash, compute_gfrm_func, cross_validation_k
     compute_gfrm_func : function(array_like features, array_like features_dash, array_like reconstruction matrix) -> double gfrm
         functions as `_compute_gfre`, `_compute_pointwise_gfre` or `_compute_gfrd`
     cross_validation_kwargs : dict
-        contains keys `train_test_split`, `train_ratio`, `seed` and `nb_folds` 
+        contains keys `train_test_split`, `train_ratio`, `seed` and `nb_folds`
 
     Returns:
     --------
@@ -228,22 +242,30 @@ def _compute_gfrm(features, features_dash, compute_gfrm_func, cross_validation_k
 
     reconstruction_matrix = compute_reconstruction_matrix(
         features[train_idx], features_dash[train_idx], nb_folds)
-    return compute_gfrm_func(features[test_idx], features_dash[test_idx], reconstruction_matrix)
+    return compute_gfrm_func(
+        features[test_idx], features_dash[test_idx], reconstruction_matrix)
 
 
-def compute_gfre(features, features_dash, cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
-    return _compute_gfrm(features, features_dash, _compute_gfre, cross_validation_kwargs)
+def compute_gfre(features, features_dash,
+                 cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
+    return _compute_gfrm(features, features_dash,
+                         _compute_gfre, cross_validation_kwargs)
 
 
-def compute_pointwise_gfre(features, features_dash, cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
-    return _compute_gfrm(features, features_dash, _compute_pointwise_gfre, cross_validation_kwargs)
+def compute_pointwise_gfre(features, features_dash,
+                           cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
+    return _compute_gfrm(features, features_dash,
+                         _compute_pointwise_gfre, cross_validation_kwargs)
 
 
-def compute_gfrd(features, features_dash, cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
-    return _compute_gfrm(features, features_dash, _compute_gfrd, cross_validation_kwargs)
+def compute_gfrd(features, features_dash,
+                 cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
+    return _compute_gfrm(features, features_dash,
+                         _compute_gfrd, cross_validation_kwargs)
 
 
-def compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
+def compute_pointwise_lfre(features, features_dash, nb_local_envs,
+                           cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
     """
     Computes the pointwise LFRE
 
@@ -256,7 +278,7 @@ def compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validat
     nb_local_envs : int
         positive integer stating the number of neighbours k used for the LFRE
     cross_validation_kwargs : dict
-        contains keys `train_test_split`, `train_ratio`, `seed` and `nb_folds` 
+        contains keys `train_test_split`, `train_ratio`, `seed` and `nb_folds`
 
     Returns:
     --------
@@ -299,7 +321,7 @@ def compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validat
         )
         # \tilde{x}_i' = \bar{x}_{F'} + (x_i - \bar{x}_F)P_{FF'}
         tilde_x_i_dash_test = local_features_dash_train_mean + (features_test[i, :][np.newaxis, :] - local_features_train_mean).dot(
-                reconstruction_matrix)
+            reconstruction_matrix)
         # \|x_i' -  \tilde{x}_i'\|
         pointwise_lfre[i] = np.linalg.norm(
             features_dash_test[i, :][np.newaxis, :] - tilde_x_i_dash_test
@@ -307,7 +329,8 @@ def compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validat
     return pointwise_lfre
 
 
-def compute_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
+def compute_lfre(features, features_dash, nb_local_envs,
+                 cross_validation_kwargs=DEFAULT_CROSS_VALIDATION_KWARGS):
     """
     Computes the LFRE
 
@@ -320,11 +343,12 @@ def compute_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs
     nb_local_envs : int
         positive integer stating the number of neighbours k used for the LFRE
     cross_validation_kwargs : dict
-        contains keys `train_test_split`, `train_ratio`, `seed` and `nb_folds` 
+        contains keys `train_test_split`, `train_ratio`, `seed` and `nb_folds`
 
     Returns:
     --------
     lfre : double
         LFRE
     """
-    return np.linalg.norm(compute_pointwise_lfre(features, features_dash, nb_local_envs, cross_validation_kwargs=cross_validation_kwargs))/np.sqrt(features.shape[0])
+    return np.linalg.norm(compute_pointwise_lfre(features, features_dash, nb_local_envs,
+                                                 cross_validation_kwargs=cross_validation_kwargs)) / np.sqrt(features.shape[0])
