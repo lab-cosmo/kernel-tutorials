@@ -1,6 +1,7 @@
 from .Sparsified import _Sparsified
 import numpy as np
-from sklearn.preprocessing import KernelCenterer
+from sklearn.preprocessing import KernelCenterer, StandardScaler
+from sklearn.exceptions import NotFittedError
 
 
 class SparseKRR(_Sparsified):
@@ -51,6 +52,8 @@ class SparseKRR(_Sparsified):
                                          coef0=coef0, kernel_params=kernel_params, n_active=n_active,
                                          regularization=regularization, tol=tol, center=center)
     def fit(self, X, Y, Kmm=None, Knm=None):
+        X = StandardScaler().fit_transform(X)
+        Y = StandardScaler().fit_transform(Y)
         self._define_Kmm_Knm(X, Kmm, Knm)
 
         # Compute max eigenvalue of regularized model
@@ -61,9 +64,10 @@ class SparseKRR(_Sparsified):
         if X is None and Knm is None:
             raise Exception( "Error: required feature or kernel matrices" )
         if self.pky_ is None:
-            raise Exception("Error: must fit the KRR model before transforming")
+            raise NotFittedError("Error: must fit the KRR model before transforming")
         else:
             if Knm is None:
+                X = StandardScaler().fit_transform(X)
                 Knm = self._get_kernel(X, self.X_sparse)
                 Knm = KernelCenterer().fit_transform(Knm)
 
@@ -72,7 +76,8 @@ class SparseKRR(_Sparsified):
 
     def  transform(self, X):
         #return Knm matrix
-        Knm = self._get_kernel( X, self.X_sparse )
+        X = StandardScaler().fit_transform(X)
+        Knm = self._get_kernel(X, self.X_sparse)
         Knm = KernelCenterer().fit_transform(Knm)
         return Knm
 

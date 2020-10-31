@@ -1,7 +1,7 @@
 from .Sparsified import _Sparsified
 import numpy as np
-from sklearn.preprocessing import KernelCenterer
-
+from sklearn.preprocessing import KernelCenterer, StandardScaler
+from sklearn.exceptions import NotFittedError
 
 class SparseKPCA(_Sparsified):
     """
@@ -47,7 +47,10 @@ class SparseKPCA(_Sparsified):
                                          coef0=coef0, kernel_params=kernel_params, n_active=n_active,
                                          regularization=regularization, tol=tol, n_components=n_components, center=center)
 
-    def fit(self, X,y=None, Kmm=None, Knm=None):
+    def fit(self, X=None,y=None, Kmm=None, Knm=None):
+        if X is None:
+            assert (Knm is not None and Kmm is not None)
+            X = StandardScaler().fit_transform(X)
         self._define_Kmm_Knm(X, Kmm, Knm)
          # Compute eigendecomposition of kernel
         vmm, Umm = self._eig_solver(self.Kmm, k=self.n_active)
@@ -78,9 +81,10 @@ class SparseKPCA(_Sparsified):
             raise Exception( "Error: required feature or kernel matrices" )
 
         if self.pkt_ is None:
-            raise Exception("Error: must fit the KPCA before transforming")
+            raise NotFittedError("Error: must fit the KPCA before transforming")
         else:
             if Knm is None:
+                X = StandardScaler().fit_transform( X )
                 Knm = self._get_kernel(X, self.X_sparse)
                 Knm = KernelCenterer().fit_transform(Knm)
 

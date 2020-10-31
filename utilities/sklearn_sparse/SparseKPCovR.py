@@ -1,8 +1,8 @@
 from .Sparsified import _Sparsified
 import numpy as np
-from sklearn.preprocessing import KernelCenterer
+from sklearn.preprocessing import KernelCenterer, StandardScaler
 from sklearn.utils.validation import check_X_y
-from sklearn.preprocessing import Normalizer
+from sklearn.exceptions import NotFittedError
 
 
 class SparseKPCovR(_Sparsified):
@@ -58,6 +58,8 @@ class SparseKPCovR(_Sparsified):
     def fit(self, X, Y, X_sparse=None, Kmm=None, Knm=None):
 
         X, Y = check_X_y( X, Y, y_numeric=True, multi_output=True )
+        X = StandardScaler().fit_transform(X)
+        Y = StandardScaler().fit_transform(Y)
         if X_sparse is None:
             fps_idxs, _ = self.FPS(X, self.n_active)
             self.X_sparse = X[fps_idxs, :]
@@ -115,14 +117,14 @@ class SparseKPCovR(_Sparsified):
         self.ptx_ = PT @ X
 
     def transform(self, X=None, Knm=None):
-
         if X is None and Knm is None:
             raise Exception( "Error: required feature or kernel matrices" )
 
         if self.pkt_ is None:
-            raise Exception("Error: must fit the KPCovR before transforming")
+            raise NotFittedError("Error: must fit the KPCovR before transforming")
         else:
             if Knm is None:
+                X = StandardScaler().fit_transform(X)
                 Knm = self._get_kernel(X, self.X_sparse)
                 Knm = KernelCenterer().fit_transform(Knm)
 
@@ -145,5 +147,5 @@ class SparseKPCovR(_Sparsified):
             raise Exception( "Error: required feature matrix" )
 
         if self.ptx_ is None:
-            raise Exception("Error: must fit the KPCovR before transforming")
+            raise NotFittedError("Error: must fit the KPCovR before transforming")
         return self._project(T,'ptx_')
