@@ -53,36 +53,36 @@ def linear_kernel(XA, XB=None):
         return self_linear_kernel(XA)
 
 def self_gaussian_kernel(XA, fps_compute=None, gamma=1.0):
-        """
-        Build a Gaussian kernel between all samples in XA
-        """
-        K = np.zeros((len(XA), len(XA)))
+    """
+    Build a Gaussian kernel between all samples in XA
+    """
+    K = np.zeros((len(XA), len(XA)))
 
-        # XA and XB structures
-        if flag_A and flag_B:
-            for idx_i in range(len(XA)):
-                for idx_j in range(len(XB)):
-                    ki = np.matmul(XA[idx_i], XB[idx_i].T)
-                    K[idx_i, idx_j] = ki.mean()
-
-        # XA structures, XB environments
-        elif flag_A:
-            for idx_i in range(len(XA)):
-                for idx_j in range(idx_i, len(XA)):
-                    kij = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XA[idx_j][:, fps_compute], metric="sqeuclidean"))
-                    K[idx_i, idx_j] = K[idx_j, idx_i] = kij.mean()
-
-        # XA environments, XB structures
-        elif flag_B:
+    # XA and XB structures
+    if flag_A and flag_B:
+        for idx_i in range(len(XA)):
             for idx_j in range(len(XB)):
-                kj = np.matmul(XA, XB[idx_j].T)
-                K[:, idx_j] = kj.mean(axis=1)
+                ki = np.matmul(XA[idx_i], XB[idx_i].T)
+                K[idx_i, idx_j] = ki.mean()
 
-        # XA and XB environments
-        else:
-            K = np.matmul(XA, XB.T)
+    # XA structures, XB environments
+    elif flag_A:
+        for idx_i in range(len(XA)):
+            for idx_j in range(idx_i, len(XA)):
+                kij = np.exp(-gamma*cdist(XA[idx_i][:, fps_compute], XA[idx_j][:, fps_compute], metric="sqeuclidean"))
+                K[idx_i, idx_j] = K[idx_j, idx_i] = kij.mean()
 
-{value for value in variable}        return K
+    # XA environments, XB structures
+    elif flag_B:
+        for idx_j in range(len(XB)):
+            kj = np.matmul(XA, XB[idx_j].T)
+            K[:, idx_j] = kj.mean(axis=1)
+
+    # XA and XB environments
+    else:
+        K = np.matmul(XA, XB.T)
+
+    return K
 
 def gaussian_kernel(XA, XB=None, fps_compute=None, gamma=1.0):
     """
