@@ -13,9 +13,21 @@ class _Sparsified(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABC
     Super-class defined sparcified methods
     """
 
-    def __init__(self, mixing, kernel="linear", gamma=None, degree=3,
-                 coef0=1, kernel_params=None, n_active=None,
-                 regularization=1E-12, tol=0, center=True, n_jobs=None, n_components=None):
+    def __init__(
+        self,
+        mixing,
+        kernel="linear",
+        gamma=None,
+        degree=3,
+        coef0=1,
+        kernel_params=None,
+        n_active=None,
+        regularization=1e-12,
+        tol=0,
+        center=True,
+        n_jobs=None,
+        n_components=None,
+    ):
         # TODO
         self.mixing = mixing
         self.kernel = kernel
@@ -28,8 +40,7 @@ class _Sparsified(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABC
         self.tol = tol
         self.center = center
         self.n_jobs = n_jobs
-        self.n_components = n_components #TODO solve, where we should define it
-
+        self.n_components = n_components  # TODO solve, where we should define it
 
     @abstractmethod
     def fit(self, X, Y, Yhat=None):
@@ -103,22 +114,20 @@ class _Sparsified(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABC
         return A_transformed
 
     def _get_kernel(self, X, Y=None):
-         if callable(self.kernel):
-             params = self.kernel_params or {}
-         else:
-             params = {"gamma": self.gamma,
-                       "degree": self.degree,
-                       "coef0": self.coef0}
-         return pairwise_kernels(X, Y, metric=self.kernel,
-                                 filter_params=True, n_jobs=self.n_jobs,
-                                 **params)
+        if callable(self.kernel):
+            params = self.kernel_params or {}
+        else:
+            params = {"gamma": self.gamma, "degree": self.degree, "coef0": self.coef0}
+        return pairwise_kernels(
+            X, Y, metric=self.kernel, filter_params=True, n_jobs=self.n_jobs, **params
+        )
 
-    def _eig_solver(self, matrix, full_matrix=False, tol =None, k = None):
+    def _eig_solver(self, matrix, full_matrix=False, tol=None, k=None):
         if tol is None:
-            tol=self.tol
+            tol = self.tol
         if k is None:
             k = self.n_components
-        if(full_matrix == False):
+        if full_matrix == False:
             v, U = eigs(matrix, k=k, tol=tol)
         else:
             v, U = np.linalg.eig(matrix)
@@ -129,12 +138,12 @@ class _Sparsified(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABC
         U = U[:, v > tol]
         v = v[v > tol]
 
-        if(len(v) == 1):
+        if len(v) == 1:
             U = U.reshape(-1, 1)
 
         return v, U
 
-    def _define_Kmm_Knm(self,X, Kmm=None, Knm=None):
+    def _define_Kmm_Knm(self, X, Kmm=None, Knm=None):
         if Kmm is None or Knm is None:
             i_sparse, _ = self.FPS(X, self.n_active)
 
@@ -145,16 +154,15 @@ class _Sparsified(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABC
 
         if self.center:
             Kmm = KernelCenterer().fit_transform(Kmm)
-        Knm = KernelCenterer().fit_transform( Knm )
+        Knm = KernelCenterer().fit_transform(Knm)
         self.Kmm = Kmm
         self.Knm = Knm
 
-
     def FPS(self, X, n=0, idx=None):
         """
-            #TODO Deside, where this function should be
-            Does Farthest Point Selection on a set of points X
-            Adapted from a routine by Michele Ceriotti
+        #TODO Deside, where this function should be
+        Does Farthest Point Selection on a set of points X
+        Adapted from a routine by Michele Ceriotti
         """
         N = X.shape[0]
 
@@ -164,32 +172,32 @@ class _Sparsified(TransformerMixin, RegressorMixin, BaseEstimator, metaclass=ABC
             n = N
 
         # Initialize arrays to store distances and indices
-        fps_idxs = np.zeros( n, dtype=np.int )
-        d = np.zeros( n )
+        fps_idxs = np.zeros(n, dtype=np.int)
+        d = np.zeros(n)
 
         if idx is None:
             # Pick first point at random
-            idx = np.random.randint( 0, N )
+            idx = np.random.randint(0, N)
         fps_idxs[0] = idx
 
         # Compute distance from all points to the first point
-        d1 = np.linalg.norm( X - X[idx], axis=1 ) ** 2
+        d1 = np.linalg.norm(X - X[idx], axis=1) ** 2
 
         # Loop over the remaining points...
-        for i in range( 1, n ):
+        for i in range(1, n):
 
             # Get maximum distance and corresponding point
-            fps_idxs[i] = np.argmax( d1 )
-            d[i - 1] = np.amax( d1 )
+            fps_idxs[i] = np.argmax(d1)
+            d[i - 1] = np.amax(d1)
 
             # Compute distance from all points to the selected point
-            d2 = np.linalg.norm( X - X[fps_idxs[i]], axis=1 ) ** 2
+            d2 = np.linalg.norm(X - X[fps_idxs[i]], axis=1) ** 2
 
             # Set distances to minimum among the last two selected points
-            d1 = np.minimum( d1, d2 )
+            d1 = np.minimum(d1, d2)
 
-            if np.abs( d1 ).max() == 0.0:
-                print( "Only {} FPS Possible".format( i ) )
+            if np.abs(d1).max() == 0.0:
+                print("Only {} FPS Possible".format(i))
                 return fps_idxs[:i], d[:i]
 
         return fps_idxs, d

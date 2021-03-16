@@ -1,11 +1,15 @@
 import numpy as np
-from .general import FPS, get_stats, sorted_eig, eig_inv, center_matrix, normalize_matrix
+from .general import (
+    FPS,
+    get_stats,
+    sorted_eig,
+    eig_inv,
+    center_matrix,
+    normalize_matrix,
+)
 from .kernels import linear_kernel, center_kernel, gaussian_kernel
 
-kernels = {
-    "gaussian": gaussian_kernel,
-    "linear": linear_kernel
-}
+kernels = {"gaussian": gaussian_kernel, "linear": linear_kernel}
 
 
 class Model:
@@ -25,7 +29,9 @@ class Model:
                 attributes
     """
 
-    def __init__(self, regularization=1e-12, scale=False, center=False, *args, **kwargs):
+    def __init__(
+        self, regularization=1e-12, scale=False, center=False, *args, **kwargs
+    ):
         self.regularization = regularization
 
         self.center = center
@@ -39,9 +45,18 @@ class Model:
         # self.Y_scale = 1
         # self.K_ref = None
 
-    def preprocess(self, X=None, Y=None, K=None,
-                   X_ref=None, Y_ref=None, K_ref=None, rcond=1.0E-12,
-                   *args, **kwargs):
+    def preprocess(
+        self,
+        X=None,
+        Y=None,
+        K=None,
+        X_ref=None,
+        Y_ref=None,
+        K_ref=None,
+        rcond=1.0e-12,
+        *args,
+        **kwargs
+    ):
         """
         Scale and center the input data as designated by the model parameters
         `scale` and `center`. These parameters are set on the model level to
@@ -50,10 +65,10 @@ class Model:
         supplied a similarly centered input X' for transformation.
         """
 
-        if(X_ref is None and X is not None):
+        if X_ref is None and X is not None:
             X_ref = X.copy()
 
-        if(Y_ref is None and Y is not None):
+        if Y_ref is None and Y is not None:
             Y_ref = Y.copy()
 
         if self.center:
@@ -73,11 +88,15 @@ class Model:
 
         if self.scale:
             if X_ref is not None and self.X_scale is None:
-                self.X_scale = np.linalg.norm(X_ref - self.X_center) / np.sqrt(X_ref.shape[0])
+                self.X_scale = np.linalg.norm(X_ref - self.X_center) / np.sqrt(
+                    X_ref.shape[0]
+                )
 
             if isinstance(self, Regression):
                 if Y_ref is not None and self.Y_scale is None:
-                    self.Y_scale = np.linalg.norm(Y_ref - self.Y_center, axis=0) / np.sqrt(Y_ref.shape[0] / Y_ref.shape[1])
+                    self.Y_scale = np.linalg.norm(
+                        Y_ref - self.Y_center, axis=0
+                    ) / np.sqrt(Y_ref.shape[0] / Y_ref.shape[1])
 
         if X is not None:
             Xcopy = X.copy()
@@ -107,11 +126,17 @@ class Model:
             if self.scale and isinstance(self, Sparsified):
                 try:
                     K_ref_centered = self.K_ref - np.mean(self.K_ref, axis=0)
-                    self.K_scale = K_ref_centered @ np.linalg.pinv(self.Kmm, rcond=rcond) @ K_ref_centered.T
+                    self.K_scale = (
+                        K_ref_centered
+                        @ np.linalg.pinv(self.Kmm, rcond=rcond)
+                        @ K_ref_centered.T
+                    )
                     self.K_scale = np.sqrt(np.trace(self.K_scale) / self.K_ref.shape[0])
                     Kcopy = normalize_matrix(Kcopy, scale=self.K_scale)
                 except AttributeError:
-                    print("Error: Kmm is required for the scaling but it has not been set")
+                    print(
+                        "Error: Kmm is required for the scaling but it has not been set"
+                    )
             elif self.scale:
                 self.K_scale = np.trace(center_kernel(self.K_ref)) / self.K_ref.shape[0]
                 Kcopy = normalize_matrix(Kcopy, scale=self.K_scale)
@@ -195,6 +220,7 @@ class Regression(Model):
                 attributes
 
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.PXY = None
@@ -227,7 +253,7 @@ class Kernelized(Model):
 
     """
 
-    def __init__(self, kernel_type='linear', *args, **kwargs):
+    def __init__(self, kernel_type="linear", *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.kernel = None
@@ -239,8 +265,10 @@ class Kernelized(Model):
 
         if self.kernel is None:
             raise Exception(
-                'Kernel Error: Please specify either {} or pass a suitable \
-                kernel function.'.format(kernels.keys())
+                "Kernel Error: Please specify either {} or pass a suitable \
+                kernel function.".format(
+                    kernels.keys()
+                )
             )
 
         self.PKT = None
@@ -373,7 +401,7 @@ class PCA(Decomposition):
         # Compute eigendecomposition of covariance matrix
         v, U = sorted_eig(C, thresh=self.regularization, n=self.n_PC)
 
-        self.PXT = U[:, :self.n_PC]
+        self.PXT = U[:, : self.n_PC]
         self.PTX = self.PXT.T
 
     def transform(self, X):
@@ -404,31 +432,31 @@ class PCA(Decomposition):
 
 class LR(Regression):
     """
-    Performs linear regression
+     Performs linear regression
 
-    ----Inherited Attributes----
-    PXY: projector from input space to property space
-    center: (boolean) whether to shift all inputs to zero mean
-    regularization: (float) parameter to offset all small eigenvalues for
-                    regularization
-    scale: (boolean) whether to scale all inputs to unit variance
+     ----Inherited Attributes----
+     PXY: projector from input space to property space
+     center: (boolean) whether to shift all inputs to zero mean
+     regularization: (float) parameter to offset all small eigenvalues for
+                     regularization
+     scale: (boolean) whether to scale all inputs to unit variance
 
-    ----Methods----
-    fit: fit the linear regression model by computing regression weights
-    statistics: provide available statistics for the regression
-    transform: compute predicted Y values
+     ----Methods----
+     fit: fit the linear regression model by computing regression weights
+     statistics: provide available statistics for the regression
+     transform: compute predicted Y values
 
-    ----Inherited Methods----
-   postprocess: un-centers and un-scales outputs according to scale and center
+     ----Inherited Methods----
+    postprocess: un-centers and un-scales outputs according to scale and center
+                 attributes
+    preprocess: centers and scales provided inputs according to scale and center
                 attributes
-   preprocess: centers and scales provided inputs according to scale and center
-               attributes
 
-    ----References----
-    1.  S. de Jong, H. A. L. Kiers, 'Principal Covariates
-        Regression: Part I. Theory', Chemometrics and Intelligents
-        Laboratory Systems 14(1): 155-164, 1992
-    2.  https://en.wikipedia.org/wiki/Linear_regression
+     ----References----
+     1.  S. de Jong, H. A. L. Kiers, 'Principal Covariates
+         Regression: Part I. Theory', Chemometrics and Intelligents
+         Laboratory Systems 14(1): 155-164, 1992
+     2.  https://en.wikipedia.org/wiki/Linear_regression
     """
 
     def __init__(self, *args, **kwargs):
@@ -446,7 +474,7 @@ class LR(Regression):
         X, Y, _ = self.preprocess(X=X, Y=Y, X_ref=X, Y_ref=Y)
 
         # Compute inverse of covariance
-        XTX = (X.T @ X)
+        XTX = X.T @ X
         XTX = XTX + self.regularization * np.eye(X.shape[1])
         XTX = np.linalg.pinv(XTX)
 
@@ -527,12 +555,11 @@ class KPCA(Kernelized, Decomposition):
             )
 
         # Compute eigendecomposition of kernel
-        v, U = sorted_eig(K,
-                          thresh=self.regularization, n=self.n_PC)
+        v, U = sorted_eig(K, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v[:self.n_PC])
+        v_inv = eig_inv(v[: self.n_PC])
 
-        self.PKT = U[:, :self.n_PC] @ np.diagflat(np.sqrt(v_inv))
+        self.PKT = U[:, : self.n_PC] @ np.diagflat(np.sqrt(v_inv))
 
         T = K @ self.PKT
         self.PTK = np.diagflat(v_inv) @ T.T @ K
@@ -559,9 +586,7 @@ class KPCA(Kernelized, Decomposition):
 
     def statistics(self, X=None, Y=None, K=None):
         if X is None and K is None:
-            raise Exception(
-                "Either the kernel or input data must be specified."
-            )
+            raise Exception("Either the kernel or input data must be specified.")
         else:
             # Compute KPCA transformation
             if K is None:
@@ -583,32 +608,32 @@ class KPCA(Kernelized, Decomposition):
 
 class KRR(Kernelized, Regression):
     """
-        Performs kernel ridge regression
+    Performs kernel ridge regression
 
-        ----Inherited Attributes----
-        PKT: projector from kernel space to latent space
-        PKY: projector from kernel space to property space
-        PTK: projector from latent space to kernel space
-        X: input used to train the model, if further kernels need be constructed
-        center: (boolean) whether to shift all inputs to zero mean
-        kernel: function to construct the kernel of the input data
-        regularization: (float) parameter to offset all small eigenvalues for regularization
-        scale: (boolean) whether to scale all inputs to unit variance
+    ----Inherited Attributes----
+    PKT: projector from kernel space to latent space
+    PKY: projector from kernel space to property space
+    PTK: projector from latent space to kernel space
+    X: input used to train the model, if further kernels need be constructed
+    center: (boolean) whether to shift all inputs to zero mean
+    kernel: function to construct the kernel of the input data
+    regularization: (float) parameter to offset all small eigenvalues for regularization
+    scale: (boolean) whether to scale all inputs to unit variance
 
-        ----Methods----
-        fit: fit the kernel ridge regression model by computing regression weights
-        statistics: provide available statistics for the regression
-        transform: compute predicted Y values
+    ----Methods----
+    fit: fit the kernel ridge regression model by computing regression weights
+    statistics: provide available statistics for the regression
+    transform: compute predicted Y values
 
-        ----Inherited Methods----
-        postprocess: un-centers and un-scales outputs according to scale and center attributes
-        preprocess: centers and scales provided inputs according to scale and center attributes
+    ----Inherited Methods----
+    postprocess: un-centers and un-scales outputs according to scale and center attributes
+    preprocess: centers and scales provided inputs according to scale and center attributes
 
-        ----References----
-        1.  M. Ceriotti, M. J. Willatt, G. Csanyi,
-            'Machine Learning of Atomic - Scale Properties
-            Based on Physical Principles', Handbook of Materials Modeling,
-            Springer, 2018
+    ----References----
+    1.  M. Ceriotti, M. J. Willatt, G. Csanyi,
+        'Machine Learning of Atomic - Scale Properties
+        Based on Physical Principles', Handbook of Materials Modeling,
+        Springer, 2018
     """
 
     def __init__(self, *args, **kwargs):
@@ -702,7 +727,7 @@ class SparseKPCA(Sparsified, Decomposition):
         # *args left in for backwards compatibility
 
         if X is None:
-            assert (Knm is not None and Kmm is not None)
+            assert Knm is not None and Kmm is not None
             X, _, _ = self.preprocess(X=X, X_ref=X)
 
         if Kmm is None or Knm is None:
@@ -720,25 +745,23 @@ class SparseKPCA(Sparsified, Decomposition):
         _, _, Knm = self.preprocess(K=Knm, K_ref=Knm)
 
         # Compute eigendecomposition of kernel
-        vmm, Umm = sorted_eig(
-            Kmm, thresh=self.regularization, n=self.n_active)
+        vmm, Umm = sorted_eig(Kmm, thresh=self.regularization, n=self.n_active)
 
-        U_active = Umm[:, :self.n_active - 1]
-        v_invsqrt = np.diagflat(np.sqrt(eig_inv(vmm[0:self.n_active - 1])))
+        U_active = Umm[:, : self.n_active - 1]
+        v_invsqrt = np.diagflat(np.sqrt(eig_inv(vmm[0 : self.n_active - 1])))
         U_active = U_active @ v_invsqrt
 
         phi_active = Knm @ U_active
 
         C = phi_active.T @ phi_active
 
-        v_C, U_C = sorted_eig(
-            C, thresh=self.regularization, n=self.n_active)
+        v_C, U_C = sorted_eig(C, thresh=self.regularization, n=self.n_active)
 
-        self.PKT = U_active @ U_C[:, :self.n_PC]
+        self.PKT = U_active @ U_C[:, : self.n_PC]
         T = Knm @ self.PKT
 
         if X is not None:
-            self.PTX = np.diagflat(eig_inv(v_C[:self.n_PC])) @ T.T @ X
+            self.PTX = np.diagflat(eig_inv(v_C[: self.n_PC])) @ T.T @ X
 
     def transform(self, X=None, Knm=None):
         X, _, Knm = self.preprocess(X=X, K=Knm)
@@ -763,7 +786,6 @@ class SparseKPCA(Sparsified, Decomposition):
             K_test = self.kernel(X, X)
             # TODO: need to change this for the new centering?
             K_test = center_kernel(K_test)
-
 
         if self.PTX is not None:
             Xr = T @ self.PTX
@@ -910,7 +932,7 @@ class MDS(Decomposition):
         # Compute eigendecomposition of covariance matrix
         v, U = sorted_eig(K, thresh=self.regularization, n=self.n_PC)
 
-        T = U[:, :self.n_PC] @ np.diagflat(np.sqrt(v[:self.n_PC]))
+        T = U[:, : self.n_PC] @ np.diagflat(np.sqrt(v[: self.n_PC]))
 
         self.PXT = np.linalg.lstsq(X, T, rcond=None)[0]
         self.PTX = np.linalg.lstsq(T, X, rcond=None)[0]
@@ -939,7 +961,7 @@ class MDS(Decomposition):
 
         stats = get_stats(x=X, t=T, xr=Xr)
         kernel_error = np.linalg.norm((X @ X.T) - (T @ T.T)) ** 2.0
-        stats['Strain'] = kernel_error / np.linalg.norm((X @ X.T))
+        stats["Strain"] = kernel_error / np.linalg.norm((X @ X.T))
 
         return stats
 
@@ -980,19 +1002,19 @@ class PCovR(PCovRBase):
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha=0.0, n_PC=None, space='auto', *args, **kwargs):
+    def __init__(self, alpha=0.0, n_PC=None, space="auto", *args, **kwargs):
         super().__init__(alpha=alpha, n_PC=n_PC, *args, **kwargs)
         self.space = space
 
     def fit_feature_space(self, X, Y):
         # Compute the inverse square root of the covariance of X
-        C = (X.T @ X)
+        C = X.T @ X
         v_C, U_C = sorted_eig(C, thresh=self.regularization)
         U_C = U_C[:, v_C > self.regularization]
         v_C = v_C[v_C > self.regularization]
 
-        Csqrt = (U_C @ np.diagflat(np.sqrt(v_C)) @ U_C.T)
-        iCsqrt = (U_C @ np.diagflat(np.sqrt(eig_inv(v_C))) @ U_C.T)
+        Csqrt = U_C @ np.diagflat(np.sqrt(v_C)) @ U_C.T
+        iCsqrt = U_C @ np.diagflat(np.sqrt(eig_inv(v_C))) @ U_C.T
 
         C_pca = X.T @ X
         C_lr = iCsqrt @ X.T @ self.Yhat
@@ -1002,25 +1024,25 @@ class PCovR(PCovRBase):
 
         v_Ct, U_Ct = sorted_eig(Ct, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v_Ct[:self.n_PC])
+        v_inv = eig_inv(v_Ct[: self.n_PC])
 
-        PXV = iCsqrt @ U_Ct[:, :self.n_PC]
+        PXV = iCsqrt @ U_Ct[:, : self.n_PC]
 
-        self.PXT = PXV @ np.diagflat(np.sqrt(v_Ct[:self.n_PC]))
-        self.PTX = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PC].T @ Csqrt
-        PTY = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, :self.n_PC].T @ iCsqrt
+        self.PXT = PXV @ np.diagflat(np.sqrt(v_Ct[: self.n_PC]))
+        self.PTX = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, : self.n_PC].T @ Csqrt
+        PTY = np.diagflat(np.sqrt(v_inv)) @ U_Ct[:, : self.n_PC].T @ iCsqrt
         self.PTY = PTY @ X.T @ Y
 
     def fit_structure_space(self, X, Y):
-        K_pca = (X @ X.T)
-        K_lr = (self.Yhat @ self.Yhat.T)
+        K_pca = X @ X.T
+        K_lr = self.Yhat @ self.Yhat.T
 
         Kt = (self.alpha * K_pca) + (1.0 - self.alpha) * K_lr
 
         v, U = sorted_eig(Kt, thresh=self.regularization, n=self.n_PC)
 
-        v_inv = eig_inv(v[:self.n_PC])
-        T = U[:, :self.n_PC] @ np.diagflat(np.sqrt(v[:self.n_PC]))
+        v_inv = eig_inv(v[: self.n_PC])
+        T = U[:, : self.n_PC] @ np.diagflat(np.sqrt(v[: self.n_PC]))
 
         P_lr = (X.T @ X) + np.eye(X.shape[1]) * self.regularization
         P_lr = np.linalg.pinv(P_lr)
@@ -1034,8 +1056,8 @@ class PCovR(PCovRBase):
         P_pca = X.T
 
         P = (self.alpha * P_pca) + (1.0 - self.alpha) * P_lr
-        self.PXT = P @ U[:, :self.n_PC] @ np.diag(np.sqrt(v_inv))
-        self.PTY = np.diagflat(v_inv) @  T.T @ Y
+        self.PXT = P @ U[:, : self.n_PC] @ np.diag(np.sqrt(v_inv))
+        self.PTY = np.diagflat(v_inv) @ T.T @ Y
 
         self.PTX = np.diagflat(v_inv) @ T.T @ X
 
@@ -1046,7 +1068,12 @@ class PCovR(PCovRBase):
             # lr =
             # lr.fit(X, Y)
 
-            self.Yhat = X @ np.linalg.pinv(X.T @ X + self.regularization*np.eye(X.shape[1])) @ X.T @ Y
+            self.Yhat = (
+                X
+                @ np.linalg.pinv(X.T @ X + self.regularization * np.eye(X.shape[1]))
+                @ X.T
+                @ Y
+            )
 
         else:
             self.Yhat = Yhat
@@ -1055,12 +1082,12 @@ class PCovR(PCovRBase):
             self.Yhat = self.Yhat.reshape(-1, 1)
 
         sample_heavy = X.shape[0] > X.shape[1]
-        if (self.space == 'feature' or sample_heavy) and self.space != 'structure':
-            if X.shape[0] > X.shape[1] and self.space != 'feature':
+        if (self.space == "feature" or sample_heavy) and self.space != "structure":
+            if X.shape[0] > X.shape[1] and self.space != "feature":
                 print("# samples > # features, computing in feature space")
             self.fit_feature_space(X, Y)
-        elif self.space == 'structure' or not sample_heavy:
-            if sample_heavy and self.space != 'structure':
+        elif self.space == "structure" or not sample_heavy:
+            if sample_heavy and self.space != "structure":
                 print("# samples < # features, computing in structure space")
             self.fit_structure_space(X, Y)
         else:
@@ -1174,9 +1201,9 @@ class KPCovR(PCovRBase, Kernelized):
 
         P = (self.alpha * P_kpca) + (1.0 - self.alpha) * P_krr
 
-        v_inv = eig_inv(self.v[:self.n_PC])
+        v_inv = eig_inv(self.v[: self.n_PC])
 
-        self.PKT = P @ self.U[:, :self.n_PC] @ np.diagflat(np.sqrt(v_inv))
+        self.PKT = P @ self.U[:, : self.n_PC] @ np.diagflat(np.sqrt(v_inv))
         T = K @ self.PKT
 
         PT = np.linalg.pinv(T.T @ T) @ T.T
@@ -1222,11 +1249,14 @@ class KPCovR(PCovRBase, Kernelized):
                 "train features should be available in the class"
             )
 
-        if(K_testtest is None and X is not None):
+        if K_testtest is None and X is not None:
             K_testtest = self.kernel(X, X)
-            K_testtest = (K_testtest - np.mean(K_test.T, axis=0)
-                          - np.mean(K_test, axis=1).reshape(-1, 1)
-                          + np.mean(self.K))
+            K_testtest = (
+                K_testtest
+                - np.mean(K_test.T, axis=0)
+                - np.mean(K_test, axis=1).reshape(-1, 1)
+                + np.mean(self.K)
+            )
         else:
             raise ValueError(
                 "Must provide a kernel between test features or a feature vector."
@@ -1236,10 +1266,11 @@ class KPCovR(PCovRBase, Kernelized):
         T_test = K_test @ self.PKT
         TTT = np.linalg.pinv(T_train.T @ T_train)
 
-        return ((np.trace(K_testtest) -
-                 2 * np.trace(K_test @ T_train @ TTT @ T_test.T) +
-                 np.trace(T_train @ TTT @ (T_test.T @ T_test) @ self.PTK)) /
-                 np.trace(K_testtest))
+        return (
+            np.trace(K_testtest)
+            - 2 * np.trace(K_test @ T_train @ TTT @ T_test.T)
+            + np.trace(T_train @ TTT @ (T_test.T @ T_test) @ self.PTK)
+        ) / np.trace(K_testtest)
 
     def loss(self, X=None, Y=None, K=None, K_testtest=None):
         if K is None and self.X is not None:
@@ -1254,7 +1285,7 @@ class KPCovR(PCovRBase, Kernelized):
 
         T, Yp, Xr = self.transform(X=X, K=K)
 
-        Lregr = np.linalg.norm(Y - Yp)**2 / np.linalg.norm(Y)**2
+        Lregr = np.linalg.norm(Y - Yp) ** 2 / np.linalg.norm(Y) ** 2
         Lproj = self.lkpcovr(X=X, Y=Y, K_test=K, K_testtest=K_testtest)
         return Lproj, Lregr
 
@@ -1279,10 +1310,11 @@ class KPCovR(PCovRBase, Kernelized):
 
         Kapprox = T @ self.PTK
 
-        stats = {r"$\ell_{proj}$": self.lkpcovr(X=X, Y=Y, K_test=K, K_testtest=K_testtest)}
+        stats = {
+            r"$\ell_{proj}$": self.lkpcovr(X=X, Y=Y, K_test=K, K_testtest=K_testtest)
+        }
 
-        return get_stats(x=X, y=Y, yp=Yp, t=T, xr=Xr,
-                         k=K, kapprox=Kapprox, **stats)
+        return get_stats(x=X, y=Y, yp=Yp, t=T, xr=Xr, k=K, kapprox=Kapprox, **stats)
 
 
 class SparseKPCovR(PCovRBase, Sparsified):
@@ -1352,11 +1384,12 @@ class SparseKPCovR(PCovRBase, Sparsified):
 
         _, _, self.Knm = self.preprocess(K=Knm, K_ref=Knm)
 
-        vmm, Umm = sorted_eig(
-            Kmm, thresh=self.regularization, n=self.n_active)
-        vmm_inv = eig_inv(vmm[:self.n_active - 1])
+        vmm, Umm = sorted_eig(Kmm, thresh=self.regularization, n=self.n_active)
+        vmm_inv = eig_inv(vmm[: self.n_active - 1])
 
-        phi_active = self.Knm @ Umm[:, :self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
+        phi_active = (
+            self.Knm @ Umm[:, : self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
+        )
 
         C = phi_active.T @ phi_active
 
@@ -1384,9 +1417,9 @@ class SparseKPCovR(PCovRBase, Sparsified):
 
         v_Ct, U_Ct = sorted_eig(Ct, thresh=0)
 
-        PPT = iCsqrt @ U_Ct[:, :self.n_PC] @ np.diag(np.sqrt(v_Ct[:self.n_PC]))
+        PPT = iCsqrt @ U_Ct[:, : self.n_PC] @ np.diag(np.sqrt(v_Ct[: self.n_PC]))
 
-        PKT = Umm[:, :self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
+        PKT = Umm[:, : self.n_active - 1] @ np.diagflat(np.sqrt(vmm_inv))
 
         self.PKT = PKT @ PPT
 
@@ -1421,8 +1454,8 @@ class SparseKPCovR(PCovRBase, Sparsified):
 
         T, Yp, Xr = self.transform(X, Knm=Knm)
 
-        Lkpca = np.linalg.norm(Xr - X)**2 / np.linalg.norm(X)**2
-        Lkrr = np.linalg.norm(Y - Yp)**2 / np.linalg.norm(Y)**2
+        Lkpca = np.linalg.norm(Xr - X) ** 2 / np.linalg.norm(X) ** 2
+        Lkrr = np.linalg.norm(Y - Yp) ** 2 / np.linalg.norm(Y) ** 2
 
         return Lkpca, Lkrr
 

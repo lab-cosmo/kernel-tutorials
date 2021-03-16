@@ -3,10 +3,11 @@ from abc import abstractmethod
 from sklearn.utils import check_array
 from sklearn.utils.validation import check_is_fitted
 
-class _BasePCovR():
+
+class _BasePCovR:
     """
     Super-class defined for PCovR style methods
-    # """
+    #"""
 
     def __init__(self, alpha, n_components, regularization, tol):
         # TODO

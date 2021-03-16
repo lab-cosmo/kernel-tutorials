@@ -40,19 +40,40 @@ class SparseKPCA(_Sparsified):
             Advances in Neural Information Processing Systems 13, 633 - 639, 2001
     """
 
-    def __init__(self, n_components, mixing=0.0, kernel="linear", gamma=None, degree=3,
-                 coef0=1, kernel_params=None, n_active=None,
-                 regularization=1E-12, tol=0, center=True):
-        super().__init__(mixing=mixing, kernel=kernel, gamma=gamma, degree=degree,
-                                         coef0=coef0, kernel_params=kernel_params, n_active=n_active,
-                                         regularization=regularization, tol=tol, n_components=n_components, center=center)
+    def __init__(
+        self,
+        n_components,
+        mixing=0.0,
+        kernel="linear",
+        gamma=None,
+        degree=3,
+        coef0=1,
+        kernel_params=None,
+        n_active=None,
+        regularization=1e-12,
+        tol=0,
+        center=True,
+    ):
+        super().__init__(
+            mixing=mixing,
+            kernel=kernel,
+            gamma=gamma,
+            degree=degree,
+            coef0=coef0,
+            kernel_params=kernel_params,
+            n_active=n_active,
+            regularization=regularization,
+            tol=tol,
+            n_components=n_components,
+            center=center,
+        )
 
-    def fit(self, X,y=None, Kmm=None, Knm=None):
+    def fit(self, X, y=None, Kmm=None, Knm=None):
         self._define_Kmm_Knm(X, Kmm, Knm)
-         # Compute eigendecomposition of kernel
+        # Compute eigendecomposition of kernel
         vmm, Umm = self._eig_solver(self.Kmm, k=self.n_active)
 
-        U_active = Umm[:, :self.n_active ]
+        U_active = Umm[:, : self.n_active]
         vmm_inv = np.linalg.pinv(np.diagflat(vmm))
         v_invsqrt = np.sqrt(vmm_inv)
         U_active = U_active @ v_invsqrt
@@ -63,19 +84,20 @@ class SparseKPCA(_Sparsified):
 
         v_C, U_C = self._eig_solver(C)
 
-        self.pkt_ = U_active @ U_C[:, :self.n_components]
+        self.pkt_ = U_active @ U_C[:, : self.n_components]
         T = self.Knm @ self.pkt_
-        v_C_inv = np.linalg.pinv( np.diagflat(v_C[:self.n_components]) )
+        v_C_inv = np.linalg.pinv(np.diagflat(v_C[: self.n_components]))
         self.ptx_ = v_C_inv @ T.T @ X
 
     def predict(self, X):
         pass
-    #TODO deside, wgat we should with predict in this case. We should realize predict(abs of Sparcified)
+
+    # TODO deside, wgat we should with predict in this case. We should realize predict(abs of Sparcified)
 
     def transform(self, X=None, Knm=None):
 
         if X is None and Knm is None:
-            raise Exception( "Error: required feature or kernel matrices" )
+            raise Exception("Error: required feature or kernel matrices")
 
         if self.pkt_ is None:
             raise Exception("Error: must fit the KPCA before transforming")
@@ -84,8 +106,8 @@ class SparseKPCA(_Sparsified):
                 Knm = self._get_kernel(X, self.X_sparse)
                 Knm = KernelCenterer().fit_transform(Knm)
 
-            return self._project( Knm, 'pkt_' )
+            return self._project(Knm, "pkt_")
 
-    def fit_transform(self, X, y=None,Kmm=None, Knm=None):
-        self.fit(X,y,Kmm,Knm)
-        self.transform(X,self.Knm)
+    def fit_transform(self, X, y=None, Kmm=None, Knm=None):
+        self.fit(X, y, Kmm, Knm)
+        self.transform(X, self.Knm)

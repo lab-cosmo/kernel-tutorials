@@ -44,12 +44,32 @@ class SparseKRR(_Sparsified):
             Conference on Machine Learning, 911 - 918, 2000
     """
 
-    def __init__(self, mixing=0.0, kernel="linear", gamma=None, degree=3,
-                 coef0=1, kernel_params=None, n_active=None,
-                 regularization=1E-12, tol=0, center=True):
-        super().__init__(mixing=mixing, kernel=kernel, gamma=gamma, degree=degree,
-                                         coef0=coef0, kernel_params=kernel_params, n_active=n_active,
-                                         regularization=regularization, tol=tol, center=center)
+    def __init__(
+        self,
+        mixing=0.0,
+        kernel="linear",
+        gamma=None,
+        degree=3,
+        coef0=1,
+        kernel_params=None,
+        n_active=None,
+        regularization=1e-12,
+        tol=0,
+        center=True,
+    ):
+        super().__init__(
+            mixing=mixing,
+            kernel=kernel,
+            gamma=gamma,
+            degree=degree,
+            coef0=coef0,
+            kernel_params=kernel_params,
+            n_active=n_active,
+            regularization=regularization,
+            tol=tol,
+            center=center,
+        )
+
     def fit(self, X, Y, Kmm=None, Knm=None):
         self._define_Kmm_Knm(X, Kmm, Knm)
 
@@ -59,7 +79,7 @@ class SparseKRR(_Sparsified):
 
     def predict(self, X=None, Knm=None):
         if X is None and Knm is None:
-            raise Exception( "Error: required feature or kernel matrices" )
+            raise Exception("Error: required feature or kernel matrices")
         if self.pky_ is None:
             raise Exception("Error: must fit the KRR model before transforming")
         else:
@@ -70,16 +90,16 @@ class SparseKRR(_Sparsified):
             Yp = Knm @ self.pky_
             return Yp
 
-    def  transform(self, X):
-        #return Knm matrix
-        Knm = self._get_kernel( X, self.X_sparse )
+    def transform(self, X):
+        # return Knm matrix
+        Knm = self._get_kernel(X, self.X_sparse)
         Knm = KernelCenterer().fit_transform(Knm)
         return Knm
 
-    def fit_transform(self, X, y=None,Kmm=None, Knm=None):
+    def fit_transform(self, X, y=None, Kmm=None, Knm=None):
         self.fit(X, y, Kmm, Knm)
         return self.Knm
 
     def fit_predict(self, X, Y, Kmm=None, Knm=None):
-        self.fit(X,Y, Kmm, Knm)
+        self.fit(X, Y, Kmm, Knm)
         self.predict(self.Knm)

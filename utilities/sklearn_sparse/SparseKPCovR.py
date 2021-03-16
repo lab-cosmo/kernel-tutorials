@@ -48,16 +48,37 @@ class SparseKPCovR(_Sparsified):
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, n_components, mixing=0.0, kernel="linear", gamma=None, degree=3,
-                 coef0=1, kernel_params=None, n_active=None,
-                 regularization=1E-12, tol=0, center=True):
-        super().__init__(mixing=mixing, kernel=kernel, gamma=gamma, degree=degree,
-                                         coef0=coef0, kernel_params=kernel_params, n_active=n_active,
-                                         regularization=regularization, tol=tol, n_components=n_components, center=center)
+    def __init__(
+        self,
+        n_components,
+        mixing=0.0,
+        kernel="linear",
+        gamma=None,
+        degree=3,
+        coef0=1,
+        kernel_params=None,
+        n_active=None,
+        regularization=1e-12,
+        tol=0,
+        center=True,
+    ):
+        super().__init__(
+            mixing=mixing,
+            kernel=kernel,
+            gamma=gamma,
+            degree=degree,
+            coef0=coef0,
+            kernel_params=kernel_params,
+            n_active=n_active,
+            regularization=regularization,
+            tol=tol,
+            n_components=n_components,
+            center=center,
+        )
 
     def fit(self, X, Y, X_sparse=None, Kmm=None, Knm=None):
 
-        X, Y = check_X_y( X, Y, y_numeric=True, multi_output=True )
+        X, Y = check_X_y(X, Y, y_numeric=True, multi_output=True)
         if X_sparse is None:
             fps_idxs, _ = self.FPS(X, self.n_active)
             self.X_sparse = X[fps_idxs, :]
@@ -76,14 +97,14 @@ class SparseKPCovR(_Sparsified):
         Knm = KernelCenterer().fit_transform(Knm)
         self.Knm = Knm
         vmm, Umm = self._eig_solver(self.Kmm, k=self.n_active)
-        vmm_inv = np.linalg.pinv( np.diagflat(vmm[:self.n_active - 1]) )
-        phi_active = self.Knm @ Umm[:, :self.n_active - 1] @ np.sqrt(vmm_inv)
+        vmm_inv = np.linalg.pinv(np.diagflat(vmm[: self.n_active - 1]))
+        phi_active = self.Knm @ Umm[:, : self.n_active - 1] @ np.sqrt(vmm_inv)
         C = phi_active.T @ phi_active
 
-        v_C, U_C = self._eig_solver(C, tol=0, k = self.n_active)
+        v_C, U_C = self._eig_solver(C, tol=0, k=self.n_active)
         U_C = U_C[:, v_C > 0]
         v_C = v_C[v_C > 0]
-        v_C_inv = np.linalg.pinv( np.diagflat(v_C))
+        v_C_inv = np.linalg.pinv(np.diagflat(v_C))
         Csqrt = U_C @ np.diagflat(np.sqrt(v_C)) @ U_C.T
         iCsqrt = U_C @ np.sqrt(v_C_inv) @ U_C.T
 
@@ -102,9 +123,13 @@ class SparseKPCovR(_Sparsified):
         Ct = self.mixing * C_pca + (1 - self.mixing) * C_lr
 
         v_Ct, U_Ct = self._eig_solver(Ct, tol=0, k=self.n_active)
-        PPT = iCsqrt @ U_Ct[:, :self.n_components] @ np.diag(np.sqrt(v_Ct[:self.n_components]))
+        PPT = (
+            iCsqrt
+            @ U_Ct[:, : self.n_components]
+            @ np.diag(np.sqrt(v_Ct[: self.n_components]))
+        )
 
-        PKT = Umm[:, :self.n_active - 1] @ np.sqrt(vmm_inv)
+        PKT = Umm[:, : self.n_active - 1] @ np.sqrt(vmm_inv)
 
         self.pkt_ = PKT @ PPT
 
@@ -117,7 +142,7 @@ class SparseKPCovR(_Sparsified):
     def transform(self, X=None, Knm=None):
 
         if X is None and Knm is None:
-            raise Exception( "Error: required feature or kernel matrices" )
+            raise Exception("Error: required feature or kernel matrices")
 
         if self.pkt_ is None:
             raise Exception("Error: must fit the KPCovR before transforming")
@@ -126,24 +151,24 @@ class SparseKPCovR(_Sparsified):
                 Knm = self._get_kernel(X, self.X_sparse)
                 Knm = KernelCenterer().fit_transform(Knm)
 
-            return self._project( Knm, 'pkt_')
+            return self._project(Knm, "pkt_")
 
     def predict(self, X=None, K=None):
         T = self.transform(X, K)
-        return self._project(T,'pty_')
+        return self._project(T, "pty_")
 
     def fit_transform(self, X, Y=None, X_sparse=None, Kmm=None, Knm=None):
-        self.fit(X,Y, X_sparse, Kmm, Knm)
+        self.fit(X, Y, X_sparse, Kmm, Knm)
         return self.transform(X, Knm)
 
     def fit_predict(self, X, Y=None, X_sparse=None, Kmm=None, Knm=None, K=None):
-        self.fit( X, Y, X_sparse, Kmm, Knm )
+        self.fit(X, Y, X_sparse, Kmm, Knm)
         return self.predict(X, K)
 
     def inverse_transform(self, T):
         if T is None:
-            raise Exception( "Error: required feature matrix" )
+            raise Exception("Error: required feature matrix")
 
         if self.ptx_ is None:
             raise Exception("Error: must fit the KPCovR before transforming")
-        return self._project(T,'ptx_')
+        return self._project(T, "ptx_")

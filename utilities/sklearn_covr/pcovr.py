@@ -5,6 +5,7 @@ from scipy.sparse.linalg import eigs
 
 from ._base import _BasePCovR
 
+
 class PCovR(_BasePCovR):
     """
     Performs PCovR, detecting whether the data set is in Sample or Feature Space
@@ -29,14 +30,26 @@ class PCovR(_BasePCovR):
             Journal of Statistical Software 65(1):1-14, 2015
     """
 
-    def __init__(self, alpha=0.0, n_components=None,
-                 regularization=1e-6, tol=1e-12,
-                 eig_solver="sparse",
-                 space=None, lr_args={}, *args, **kwargs,
-                 ):
-        super().__init__(alpha=alpha, n_components=n_components,
-                         regularization=regularization, tol=tol,
-                         *args, **kwargs)
+    def __init__(
+        self,
+        alpha=0.0,
+        n_components=None,
+        regularization=1e-6,
+        tol=1e-12,
+        eig_solver="sparse",
+        space=None,
+        lr_args={},
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            alpha=alpha,
+            n_components=n_components,
+            regularization=regularization,
+            tol=tol,
+            *args,
+            **kwargs,
+        )
         self.space = space
         self.lr_args = lr_args
         self.eig_solver = eig_solver
@@ -57,7 +70,7 @@ class PCovR(_BasePCovR):
 
         # Sparse eigensolvers will not work when seeking N-1 eigenvalues
         if min(X.shape) <= self.n_components:
-            self.eig_solver = 'full'
+            self.eig_solver = "full"
 
         self._fit(X, Y)
 
@@ -67,16 +80,16 @@ class PCovR(_BasePCovR):
         """
         if self.space is None:
             if X.shape[0] > X.shape[1]:
-                self.space = 'feature'
+                self.space = "feature"
             else:
-                self.space = 'structure'
+                self.space = "structure"
 
-        if self.space == 'feature':
+        if self.space == "feature":
             self._fit_feature_space(X, Y)
         else:
             self._fit_sample_space(X, Y)
 
-        self.mean_ = np.mean(X, axis =0)
+        self.mean_ = np.mean(X, axis=0)
 
     def _compute_Yhat(self, X, Y):
         """
@@ -129,8 +142,7 @@ class PCovR(_BasePCovR):
 
         self.pxt_ = np.linalg.multi_dot([iCsqrt, U, np.diagflat(S)])
         self.ptx_ = np.linalg.multi_dot([S_inv, U.T, Csqrt])
-        self.pty_ = np.linalg.multi_dot(
-            [S_inv, U.T, iCsqrt, X.T, Y])
+        self.pty_ = np.linalg.multi_dot([S_inv, U.T, iCsqrt, X.T, Y])
 
     def _fit_sample_space(self, X, Y):
         """
@@ -146,24 +158,23 @@ class PCovR(_BasePCovR):
 
         """
 
-
-        Kt = (self.alpha * np.dot(X, X.T)) + \
-             (1.0 - self.alpha) * np.dot(self.Yhat, self.Yhat.T)
+        Kt = (self.alpha * np.dot(X, X.T)) + (1.0 - self.alpha) * np.dot(
+            self.Yhat, self.Yhat.T
+        )
 
         v, U = self._eig_solver(Kt)
         S = v ** 0.5
 
         T = np.dot(U, np.diagflat(S))
 
-        P = (self.alpha * X.T) + (1.0 - self.alpha) * \
-            np.dot(self.W, self.Yhat.T)
-        self.pxt_ = np.linalg.multi_dot([P, U, np.diagflat(1/S)])
-        self.pty_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, Y])
-        self.ptx_ = np.linalg.multi_dot([np.diagflat(1/S**2.0), T.T, X])
+        P = (self.alpha * X.T) + (1.0 - self.alpha) * np.dot(self.W, self.Yhat.T)
+        self.pxt_ = np.linalg.multi_dot([P, U, np.diagflat(1 / S)])
+        self.pty_ = np.linalg.multi_dot([np.diagflat(1 / S ** 2.0), T.T, Y])
+        self.ptx_ = np.linalg.multi_dot([np.diagflat(1 / S ** 2.0), T.T, X])
 
     def _eig_solver(self, matrix, full_matrix=False):
-        if(self.eig_solver=='sparse' and full_matrix==False):
-            v, U= eigs(matrix, k=self.n_components, tol=self.tol)
+        if self.eig_solver == "sparse" and full_matrix == False:
+            v, U = eigs(matrix, k=self.n_components, tol=self.tol)
         else:
             v, U = np.linalg.eig(matrix)
 
@@ -173,17 +184,17 @@ class PCovR(_BasePCovR):
         U = U[:, v > self.tol]
         v = v[v > self.tol]
 
-        if(len(v)==1):
-            U = U.reshape(-1,1)
+        if len(v) == 1:
+            U = U.reshape(-1, 1)
 
         return v, U
 
     def transform(self, X):
-        return super()._project(X, 'pxt_')
+        return super()._project(X, "pxt_")
 
     def inverse_transform(self, T):
-        return super()._project(T, 'ptx_')
+        return super()._project(T, "ptx_")
 
     def predict(self, X):
         # Predict based on X only
-        return super()._project(self.transform(X), 'pty_')
+        return super()._project(self.transform(X), "pty_")
