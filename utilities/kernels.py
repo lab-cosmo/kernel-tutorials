@@ -72,7 +72,7 @@ def linear_kernel(XA, XB=None):
         elif flag_B:
             for idx_j in range(len(XB)):
                 kj = np.matmul(XA, XB[idx_j].T)
-                K[:, idx_j] = ki.mean(axis=1)
+                K[:, idx_j] = kj.mean(axis=1)
 
         # XA and XB environments
         else:
@@ -155,7 +155,7 @@ def gaussian_kernel(XA, XB=None, gamma=1.0):
         elif flag_B:
             for idx_j in range(len(XB)):
                 kj = np.exp(-gamma * cdist(XA, XB[idx_j], metric="sqeuclidean"))
-                K[:, idx_j] = ki.mean(axis=1)
+                K[:, idx_j] = kj.mean(axis=1)
 
         # XA and XB environments
         else:

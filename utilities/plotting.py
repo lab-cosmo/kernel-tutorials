@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display, Markdown
 import os
-import datetime
 
 utils_dir = os.path.dirname(os.path.realpath(__file__))
 plt.style.use("{}/kernel_pcovr.mplstyle".format(utils_dir))
@@ -50,7 +49,7 @@ def plot_base(
         scatter_points[:, 0], scatter_points[:, 1], rasterized=rasterized, **kwargs
     )
 
-    if "cmap" in kwargs and cbar == True:
+    if "cmap" in kwargs and cbar is True:
 
         if cb_ax is None:
             cb_args["ax"] = ax

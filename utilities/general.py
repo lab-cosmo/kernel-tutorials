@@ -151,22 +151,31 @@ def split_data(N, n_train=0):
     return i_test, i_train
 
 
-def load_variables(cache_file="../datasets/precomputed.npz", **kwargs):
-    """Loads the cache holding the soap vectors for CSD"""
-    return calculate_variables(**dict(np.load(cache_file)), **kwargs)
+def load_variables(cache_name="../datasets/precomputed.npz", **kwargs):
+    try:
+        data = dict(np.load(cache_name, allow_pickle=True))
+    except (OSError, ImportError):
+        print("Returning default data set.")
+        from skcosmo.datasets import load_csd_1000r
+
+        X, y = load_csd_1000r(return_X_y=True)
+        data = dict(X=X, Y=y, indices=np.array([]))
+    return calculate_variables(**dict(data), **kwargs)
 
 
 def calculate_variables(
     X,
     Y,
     indices,
-    n_atoms,
+    n_atoms=None,
     N=10,
     n_FPS=200,
     kernel_func=gaussian_kernel,
     i_train=None,
     i_test=None,
-    **kwargs
+    n_train=None,
+    K_train=None,
+    K_test=None,
 ):
     """Loads necessary data for the tutorials"""
 
@@ -178,13 +187,13 @@ def calculate_variables(
         print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
-    try:
+    if i_train is not None:
         print("Shape of testing data is: ", i_train.shape, ".")
-    except:
+    else:
         print("Splitting Data Set")
-        try:
+        if n_train is not None:
             i_test, i_train = split_data(len(Y), n_train)
-        except:
+        else:
             n_train = int(len(Y) / 2)
             i_test, i_train = split_data(len(Y), n_train)
 
@@ -205,11 +214,11 @@ def calculate_variables(
     Y_train = normalize_matrix(Y_train, scale=Y_scale)
     Y_test = normalize_matrix(Y_test, scale=Y_scale)
 
-    if len(Y) == len(indices):
+    if len(Y) == len(indices) and n_atoms is not None:
         print(
             "Computing training/testing sets from summed environment-centered soap vectors."
         )
-        frame_starts = [sum(nat[:i]) for i in range(len(n_atoms) + 1)]
+        frame_starts = [sum(n_atoms[:i]) for i in range(len(n_atoms) + 1)]
         X_split = [
             X[frame_starts[i] : frame_starts[i + 1]] for i in range(len(indices))
         ]
@@ -235,9 +244,9 @@ def calculate_variables(
     X_test = normalize_matrix(X_test, scale=X_scale)
     X = normalize_matrix(X, scale=X_scale)
 
-    try:
+    if K_train is not None and K_test is not None:
         print("Shape of kernel is: ", K_train.shape, ".")
-    except:
+    else:
         if len(Y) == len(indices):
             print(
                 "Computing kernels from summing kernels of environment-centered soap vectors."
