@@ -1,71 +1,18 @@
 import numpy as np
 from sklearn.metrics import r2_score as calc_R2
+from sklearn.model_selection import train_test_split
 
-from .kernels import gaussian_kernel, center_kernel
+from skcosmo.feature_selection import FPS
+from skcosmo.preprocessing import KernelNormalizer
+from skcosmo.preprocessing import StandardFlexibleScaler
+
+from .kernels import gaussian_kernel
 
 
 def eig_inv(v, rcond=1e-14):
     """ Inverse of a list (typically of eigenvalues) with thresholding à la pinv """
     thresh = v.max() * rcond
     return np.array([(1 / vv if vv > thresh else 0.0) for vv in v])
-
-
-def normalize_matrix(A, scale=None):
-    """ Normalize a matrix so that its entries have unit variance """
-    if scale is None:
-        scale = np.linalg.norm(A) / np.sqrt(len(A))
-    return A / scale
-
-
-def center_matrix(A, center=None):
-    """ Removes the mean to "center" a feature matrix """
-    if center is None:
-        center = np.mean(A, axis=0)
-    return A - center
-
-
-def FPS(X, n=0, idx=None):
-    """
-    Does Farthest Point Selection on a set of points X
-    Adapted from a routine by Michele Ceriotti
-    """
-    N = X.shape[0]
-
-    # If desired number of points less than or equal to zero,
-    # select all points
-    if n <= 0:
-        n = N
-
-    # Initialize arrays to store distances and indices
-    fps_idxs = np.zeros(n, dtype=np.int)
-    d = np.zeros(n)
-
-    if idx is None:
-        # Pick first point at random
-        idx = np.random.randint(0, N)
-    fps_idxs[0] = idx
-
-    # Compute distance from all points to the first point
-    d1 = np.linalg.norm(X - X[idx], axis=1) ** 2
-
-    # Loop over the remaining points...
-    for i in range(1, n):
-
-        # Get maximum distance and corresponding point
-        fps_idxs[i] = np.argmax(d1)
-        d[i - 1] = np.amax(d1)
-
-        # Compute distance from all points to the selected point
-        d2 = np.linalg.norm(X - X[fps_idxs[i]], axis=1) ** 2
-
-        # Set distances to minimum among the last two selected points
-        d1 = np.minimum(d1, d2)
-
-        if np.abs(d1).max() == 0.0:
-            print("Only {} FPS Possible".format(i))
-            return fps_idxs[:i], d[:i]
-
-    return fps_idxs, d
 
 
 def quick_inverse(mat):
@@ -136,21 +83,6 @@ def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None, **
     return stats
 
 
-def split_data(N, n_train=0):
-    """Returns indices for the training and tests data sets"""
-    global n_test
-    # Splits in train and test sets
-    if n_train <= 0:  # defaults 50-50 split
-        n_train = int(N / 2)
-    n_test = N - n_train
-    r_train = np.asarray(range(N))
-    np.random.shuffle(r_train)
-    i_test = list(sorted(r_train[n_train:]))
-    i_train = list(sorted(r_train[:n_train]))
-
-    return i_test, i_train
-
-
 def load_variables(cache_name="../datasets/precomputed.npz", **kwargs):
     try:
         data = dict(np.load(cache_name, allow_pickle=True))
@@ -179,11 +111,10 @@ def calculate_variables(
 ):
     """Loads necessary data for the tutorials"""
 
-    print(len(indices), "frames in total.")
     print("Shape of Input Data is ", X.shape, ".")
 
-    if n_FPS is not None:
-        fps_idxs, _ = FPS(X.T, n_FPS)
+    if n_FPS is not None and n_FPS < X.shape[1]:
+        fps_idxs = FPS(n_features_to_select=n_FPS).fit(X).selected_idx_
         print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
@@ -191,11 +122,10 @@ def calculate_variables(
         print("Shape of testing data is: ", i_train.shape, ".")
     else:
         print("Splitting Data Set")
-        if n_train is not None:
-            i_test, i_train = split_data(len(Y), n_train)
-        else:
+        if n_train is None:
             n_train = int(len(Y) / 2)
-            i_test, i_train = split_data(len(Y), n_train)
+
+        i_test, i_train = train_test_split(np.arange(len(Y)), train_size=n_train)
 
     n_train = len(i_train)
     n_test = len(i_test)
@@ -203,16 +133,16 @@ def calculate_variables(
     Y_train = Y[i_train]
     Y_test = Y[i_test]
 
-    Y_center = Y_train.mean(axis=0)
-    Y_scale = np.linalg.norm(Y_train - Y_center, axis=0) / np.sqrt(
-        n_train / Y_train.shape[1]
-    )
+    y_scaler = StandardFlexibleScaler(column_wise=True).fit(Y_train)
 
-    Y = center_matrix(Y, center=Y_center)
-    Y_train = center_matrix(Y_train, center=Y_center)
-    Y_test = center_matrix(Y_test, center=Y_center)
-    Y_train = normalize_matrix(Y_train, scale=Y_scale)
-    Y_test = normalize_matrix(Y_test, scale=Y_scale)
+    # Center total dataset
+    Y = y_scaler.transform(Y)
+
+    # Center training data
+    Y_train = y_scaler.transform(Y_train)
+
+    # Center training data
+    Y_test = y_scaler.transform(Y_test)
 
     if len(Y) == len(indices) and n_atoms is not None:
         print(
@@ -233,16 +163,16 @@ def calculate_variables(
         X_train = X[i_train]
         X_test = X[i_test]
 
-    X_center = X_train.mean(axis=0)
-    X_scale = np.linalg.norm(X_train - X_center) / np.sqrt(n_train)
+    x_scaler = StandardFlexibleScaler(column_wise=False).fit(X_train)
 
-    X_train = center_matrix(X_train, center=X_center)
-    X_test = center_matrix(X_test, center=X_center)
-    X = center_matrix(X, center=X_center)
+    # Center total dataset
+    X = x_scaler.transform(X)
 
-    X_train = normalize_matrix(X_train, scale=X_scale)
-    X_test = normalize_matrix(X_test, scale=X_scale)
-    X = normalize_matrix(X, scale=X_scale)
+    # Center training data
+    X_train = x_scaler.transform(X_train)
+
+    # Center training data
+    X_test = x_scaler.transform(X_test)
 
     if K_train is not None and K_test is not None:
         print("Shape of kernel is: ", K_train.shape, ".")
@@ -264,13 +194,10 @@ def calculate_variables(
             K_train = kernel_func(X_split[i_train], X_split[i_train])
             K_test = kernel_func(X_split[i_test], X_split[i_train])
 
-    K_test = center_kernel(K_test, reference=K_train)
-    K_train = center_kernel(K_train)
+    k_scaler = KernelNormalizer().fit(K_train)
 
-    K_scale = np.trace(K_train) / K_train.shape[0]
-
-    K_train = normalize_matrix(K_train, scale=K_scale)
-    K_test = normalize_matrix(K_test, scale=K_scale)
+    K_train = k_scaler.transform(K_train)
+    K_test = k_scaler.transform(K_test)
 
     n_train = len(X_train)
     n_test = len(X_test)
@@ -280,10 +207,10 @@ def calculate_variables(
         X=X,
         Y=Y,
         X_split=X_split,
-        X_center=X_center,
-        Y_center=Y_center,
-        X_scale=X_scale,
-        Y_scale=Y_scale,
+        X_center=x_scaler.mean_,
+        Y_center=y_scaler.mean_,
+        X_scale=x_scaler.scale_,
+        Y_scale=y_scaler.scale_,
         X_train=X_train,
         Y_train=Y_train,
         X_test=X_test,
