@@ -8,7 +8,7 @@ import numpy as np
 
 class cbar(object):
     """
-        Base class for color bars
+    Base class for color bars
     """
 
     def __init__(self):
@@ -24,7 +24,7 @@ class cbar(object):
 
 class cring(object):
     """
-        Base class for periodic color bars
+    Base class for periodic color bars
     """
 
     def __init__(self):
@@ -40,7 +40,7 @@ class cring(object):
 
 class cbarHot(cbar):
     """
-        Class to make the custom 'cbarHot' COSMO colorbar
+    Class to make the custom 'cbarHot' COSMO colorbar
     """
 
     def __init__(self, mn=0.0, mx=1.0):
@@ -66,18 +66,18 @@ class cbarHot(cbar):
             i[np.where(i < 0.0)] = 0.0
 
         # Build colormap and register it with Matplotlib
-        cbar_name = 'cbarHot'
-        if(mn!=0 or mx!=1.0):
-            cbar_name +='_{}_{}'.format(mn, mx)
+        cbar_name = "cbarHot"
+        if mn != 0 or mx != 1.0:
+            cbar_name += "_{}_{}".format(mn, mx)
         self.make_cbar(cbar_name, np.column_stack((pr, pg, pb)))
 
 
 class cbarHot_alt(cbar):
     """
-        Class to make the custom 'cbarHot' COSMO colorbar in an alternate
-        construction, based on blending with an existing Python colorbar.
-        Appearance is not quite the same as the Mathematica colorbar,
-        but is similar.
+    Class to make the custom 'cbarHot' COSMO colorbar in an alternate
+    construction, based on blending with an existing Python colorbar.
+    Appearance is not quite the same as the Mathematica colorbar,
+    but is similar.
     """
 
     def __init__(self, mn=0.0, mx=1.0):
@@ -90,39 +90,42 @@ class cbarHot_alt(cbar):
         y = np.linspace(0.0, 0.8, 1000)
 
         # RGB values
-        rgbWhite = np.array([1.0, 1.0, 1.0])*np.ones((1000, 3))
-        rgb1 = np.array([1.0, 0.5, 0.0])*np.ones((1000, 3))
-        rgbPurple = np.array([0.5, 0.0, 0.5])*np.ones((1000, 3))
+        rgbWhite = np.array([1.0, 1.0, 1.0]) * np.ones((1000, 3))
+        rgb1 = np.array([1.0, 0.5, 0.0]) * np.ones((1000, 3))
+        rgbPurple = np.array([0.5, 0.0, 0.5]) * np.ones((1000, 3))
 
         # Blend with the 'ocean' colorbar
-        cm = plt.get_cmap('ocean')
+        cm = plt.get_cmap("ocean")
 
         # Blend ratios
-        dsc = cm(1.0-y)**1.1
-        c1 = (1.0-x)**4
-        c2 = x**10
-        c3 = (x-0.1)**2
+        dsc = cm(1.0 - y) ** 1.1
+        c1 = (1.0 - x) ** 4
+        c2 = x ** 10
+        c3 = (x - 0.1) ** 2
 
         # Blend colors
-        blend1 = np.einsum('ij,i->ij', dsc[:, 0:3], 1.0-c1) \
-            + np.einsum('ij,i->ij', rgbWhite, c1)
-        blend2 = np.einsum('ij,i->ij', blend1, 1.0-c3) \
-            + np.einsum('ij,i->ij', rgbPurple, c3)
-        blend3 = np.einsum('ij,i->ij', blend2, 1.0-c2) \
-            + np.einsum('ij,i->ij', rgb1, c2)
+        blend1 = np.einsum("ij,i->ij", dsc[:, 0:3], 1.0 - c1) + np.einsum(
+            "ij,i->ij", rgbWhite, c1
+        )
+        blend2 = np.einsum("ij,i->ij", blend1, 1.0 - c3) + np.einsum(
+            "ij,i->ij", rgbPurple, c3
+        )
+        blend3 = np.einsum("ij,i->ij", blend2, 1.0 - c2) + np.einsum(
+            "ij,i->ij", rgb1, c2
+        )
 
         # Build the colormap and register it with Matplotlib
-        cbar_name = 'cbarHot'
-        if(mn!=0 or mx!=1.0):
-            cbar_name +='_{}_{}'.format(mn, mx)
+        cbar_name = "cbarHot"
+        if mn != 0 or mx != 1.0:
+            cbar_name += "_{}_{}".format(mn, mx)
         self.make_cbar(cbar_name, blend3)
 
 
 class cbarBWR(cbar):
     """
-        Class to make the custom 'cbarBWR' COSMO colorbar.
-        A similar colorbar exists already in Matplotlib, and
-        (in my opinion) looks a little nicer: 'RdBu'
+    Class to make the custom 'cbarBWR' COSMO colorbar.
+    A similar colorbar exists already in Matplotlib, and
+    (in my opinion) looks a little nicer: 'RdBu'
     """
 
     def __init__(self, mn=0.0, mx=1.0):
@@ -131,43 +134,49 @@ class cbarBWR(cbar):
         x = np.linspace(mn, mx, 1000)
 
         # RGB values
-        rgbBlack = np.array([0.0, 0.0, 0.0])*np.ones((1000, 3))
-        rgbWhite = np.array([1.0, 1.0, 1.0])*np.ones((1000, 3))
-        rgb1 = np.array([0.0, 0.4, 1.0])*np.ones((1000, 3))
-        rgb2 = np.array([1.0, 0.3, 0.0])*np.ones((1000, 3))
+        rgbBlack = np.array([0.0, 0.0, 0.0]) * np.ones((1000, 3))
+        rgbWhite = np.array([1.0, 1.0, 1.0]) * np.ones((1000, 3))
+        rgb1 = np.array([0.0, 0.4, 1.0]) * np.ones((1000, 3))
+        rgb2 = np.array([1.0, 0.3, 0.0]) * np.ones((1000, 3))
 
         # Blend ratios
-        c1 = np.sin(x*np.pi/2)
-        c2 = np.cos(x*np.pi/2)
-        c3 = 2*np.sin(x*np.pi)**4 + 4*np.sin(x*np.pi)**16 \
-            + 8*np.sin(x*np.pi)**64 + 32*np.sin(x*np.pi)**256
+        c1 = np.sin(x * np.pi / 2)
+        c2 = np.cos(x * np.pi / 2)
+        c3 = (
+            2 * np.sin(x * np.pi) ** 4
+            + 4 * np.sin(x * np.pi) ** 16
+            + 8 * np.sin(x * np.pi) ** 64
+            + 32 * np.sin(x * np.pi) ** 256
+        )
         c3 /= np.amax(c3)
-        c4 = np.cos(x*np.pi)**16
+        c4 = np.cos(x * np.pi) ** 16
 
         # Normalize ratios to add to 1
-        norm = np.amax(c1+c2+c3+c4)
+        norm = np.amax(c1 + c2 + c3 + c4)
         c1 /= norm
         c2 /= norm
         c3 /= norm
         c4 /= norm
 
         # Blend colors
-        blend = np.einsum('ij,i->ij', rgb2, c1) \
-            + np.einsum('ij,i->ij', rgb1, c2) \
-            + np.einsum('ij,i->ij', rgbWhite, c3) \
-            + np.einsum('ij,i->ij', rgbBlack, c4)
+        blend = (
+            np.einsum("ij,i->ij", rgb2, c1)
+            + np.einsum("ij,i->ij", rgb1, c2)
+            + np.einsum("ij,i->ij", rgbWhite, c3)
+            + np.einsum("ij,i->ij", rgbBlack, c4)
+        )
 
         # Build the colormap and register it with Matplotlib
-        cbar_name = 'cbarBWR'
-        if(mn!=0 or mx!=1.0):
-            cbar_name +='_{}_{}'.format(mn, mx)
+        cbar_name = "cbarBWR"
+        if mn != 0 or mx != 1.0:
+            cbar_name += "_{}_{}".format(mn, mx)
 
         self.make_cbar(cbar_name, blend)
 
 
 class cbarPhi(cring):
     """
-        Class to make custom COSMO periodic colorbar
+    Class to make custom COSMO periodic colorbar
     """
 
     def __init__(self, mn=0.0, mx=1.0):
@@ -176,41 +185,42 @@ class cbarPhi(cring):
         x = np.linspace(mn, mx, 1000)
 
         # RGB values
-        rgbBlack = np.array([0.0, 0.0, 0.0])*np.ones((1000, 3))
-        rgbWhite = np.array([1.0, 1.0, 1.0])*np.ones((1000, 3))
-        rgb1 = np.array([0.0, 0.4, 0.9])*np.ones((1000, 3))
-        rgb2 = np.array([1.0, 0.3, 0.0])*np.ones((1000, 3))
+        rgbBlack = np.array([0.0, 0.0, 0.0]) * np.ones((1000, 3))
+        rgbWhite = np.array([1.0, 1.0, 1.0]) * np.ones((1000, 3))
+        rgb1 = np.array([0.0, 0.4, 0.9]) * np.ones((1000, 3))
+        rgb2 = np.array([1.0, 0.3, 0.0]) * np.ones((1000, 3))
 
         # Blend ratios
-        c1 = 0.5*np.cos(x*np.pi+np.pi/4+np.pi/4)**4
-        c2 = 1.0*np.sin(x*np.pi+np.pi/4+np.pi/4)**8
-        c3 = np.cos(x*np.pi+np.pi/4)**4
-        c4 = np.cos(x*np.pi+np.pi/2+np.pi/4)**4
+        c1 = 0.5 * np.cos(x * np.pi + np.pi / 4 + np.pi / 4) ** 4
+        c2 = 1.0 * np.sin(x * np.pi + np.pi / 4 + np.pi / 4) ** 8
+        c3 = np.cos(x * np.pi + np.pi / 4) ** 4
+        c4 = np.cos(x * np.pi + np.pi / 2 + np.pi / 4) ** 4
 
         # Normalize ratios to sum to 1
-        norm = np.amax(c1+c2+c3+c4)
+        norm = np.amax(c1 + c2 + c3 + c4)
         c1 /= norm
         c2 /= norm
         c3 /= norm
         c4 /= norm
 
         # Blend colors
-        blend = np.einsum('ij,i->ij', rgbBlack, c1) \
-            + np.einsum('ij,i->ij', rgbWhite, c2) \
-            + np.einsum('ij,i->ij', rgb1, c3) + \
-            np.einsum('ij,i->ij', rgb2, c4)
+        blend = (
+            np.einsum("ij,i->ij", rgbBlack, c1)
+            + np.einsum("ij,i->ij", rgbWhite, c2)
+            + np.einsum("ij,i->ij", rgb1, c3)
+            + np.einsum("ij,i->ij", rgb2, c4)
+        )
 
         # Build the colormap and register it with Matplotlib
-        cbar_name = 'cbarPhi'
-        if(mn!=0 or mx!=1.0):
-            cbar_name +='_{}_{}'.format(mn, mx)
+        cbar_name = "cbarPhi"
+        if mn != 0 or mx != 1.0:
+            cbar_name += "_{}_{}".format(mn, mx)
 
         self.make_cbar(cbar_name, blend)
 
 
 class cbarMPLtrunc(cbar):
-
-    def __init__(self, mpl_cmap='jet', mn=0.0, mx=1.0):
+    def __init__(self, mpl_cmap="jet", mn=0.0, mx=1.0):
 
         # Build colorbar using 1000 sample points
         x = np.linspace(mn, mx, 1000)
@@ -220,15 +230,16 @@ class cbarMPLtrunc(cbar):
 
         # Build the colormap and register it with Matplotlib
         cbar_name = mpl_cmap
-        if(mn!=0 or mx!=1.0):
-            cbar_name +='_{}_{}'.format(mn, mx)
+        if mn != 0 or mx != 1.0:
+            cbar_name += "_{}_{}".format(mn, mx)
 
             self.make_cbar(cbar_name, blend)
+
 
 def load():
     for cb in [cbarHot, cbarBWR, cbarPhi]:
         cb(mn=0.0, mx=1.0)
     cbarHot(mn=0.3, mx=1.05)
-    cbarMPLtrunc('bone_r',0.2, 1.0)
-    cbarMPLtrunc('Reds',0.3, 1.0)
-    cbarMPLtrunc('Blues',0.3, 1.0)
+    cbarMPLtrunc("bone_r", 0.2, 1.0)
+    cbarMPLtrunc("Reds", 0.3, 1.0)
+    cbarMPLtrunc("Blues", 0.3, 1.0)

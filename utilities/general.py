@@ -7,7 +7,7 @@ from .kernels import gaussian_kernel, center_kernel
 def eig_inv(v, rcond=1e-14):
     """ Inverse of a list (typically of eigenvalues) with thresholding à la pinv """
     thresh = v.max() * rcond
-    return np.array([(1/vv if vv>thresh else 0.0) for vv in v])
+    return np.array([(1 / vv if vv > thresh else 0.0) for vv in v])
 
 
 def normalize_matrix(A, scale=None):
@@ -19,15 +19,15 @@ def normalize_matrix(A, scale=None):
 
 def center_matrix(A, center=None):
     """ Removes the mean to "center" a feature matrix """
-    if (center is None):
+    if center is None:
         center = np.mean(A, axis=0)
     return A - center
 
 
 def FPS(X, n=0, idx=None):
     """
-        Does Farthest Point Selection on a set of points X
-        Adapted from a routine by Michele Ceriotti
+    Does Farthest Point Selection on a set of points X
+    Adapted from a routine by Michele Ceriotti
     """
     N = X.shape[0]
 
@@ -46,7 +46,7 @@ def FPS(X, n=0, idx=None):
     fps_idxs[0] = idx
 
     # Compute distance from all points to the first point
-    d1 = np.linalg.norm(X - X[idx], axis=1)**2
+    d1 = np.linalg.norm(X - X[idx], axis=1) ** 2
 
     # Loop over the remaining points...
     for i in range(1, n):
@@ -56,7 +56,7 @@ def FPS(X, n=0, idx=None):
         d[i - 1] = np.amax(d1)
 
         # Compute distance from all points to the selected point
-        d2 = np.linalg.norm(X - X[fps_idxs[i]], axis=1)**2
+        d2 = np.linalg.norm(X - X[fps_idxs[i]], axis=1) ** 2
 
         # Set distances to minimum among the last two selected points
         d1 = np.minimum(d1, d2)
@@ -77,13 +77,14 @@ def quick_inverse(mat):
 
 def sorted_eig(mat, thresh=0.0, n=None, sps=True):
     """
-        Returns n eigenvalues and vectors sorted
-        from largest to smallest eigenvalue
+    Returns n eigenvalues and vectors sorted
+    from largest to smallest eigenvalue
     """
 
-    if(sps):
+    if sps:
         from scipy.sparse.linalg import eigs as speig
-        if(n is None):
+
+        if n is None:
             k = mat.shape[0] - 1
         else:
             k = n
@@ -101,13 +102,12 @@ def sorted_eig(mat, thresh=0.0, n=None, sps=True):
         val = np.flip(val, axis=0)
         vec = np.flip(vec, axis=1)
 
-    if(n is not None and len(val[val<thresh]) < n):
+    if n is not None and len(val[val < thresh]) < n:
         vec[:, val < thresh] = 0
         val[val < thresh] = 0
     else:
-        vec = vec[:, val>=thresh]
-        val = val[val>=thresh]
-
+        vec = vec[:, val >= thresh]
+        val = val[val >= thresh]
 
     return val[:n], vec[:, :n]
 
@@ -124,9 +124,9 @@ def get_stats(y=None, yp=None, x=None, t=None, xr=None, k=None, kapprox=None, **
         error = x.var(axis=0).sum() - t.var(axis=0).sum()
         stats[r"Residual Variance<br>$\sigma_X^2 - \sigma_T^2$"] = error
     if x is not None and xr is not None:
-        stats[r"$\ell_{proj}$"] = ((x - xr)**2).mean(axis=0).sum()
+        stats[r"$\ell_{proj}$"] = ((x - xr) ** 2).mean(axis=0).sum()
     if k is not None and kapprox is not None:
-        error = np.linalg.norm(kapprox - k)**2 / np.linalg.norm(k)**2.0
+        error = np.linalg.norm(kapprox - k) ** 2 / np.linalg.norm(k) ** 2.0
         stats[r"$\ell_{gram}$"] = error
 
     # allow for manual input of statistics (for kpcovr error)
@@ -151,22 +151,32 @@ def split_data(N, n_train=0):
     return i_test, i_train
 
 
-def load_variables(cache_file="../datasets/precomputed.npz", **kwargs):
-    """Loads the cache holding the soap vectors for CSD"""
-    return calculate_variables(**dict(np.load(cache_file)), **kwargs)
+def load_variables(cache_name="../datasets/precomputed.npz", **kwargs):
+    try:
+        data = dict(np.load(cache_name, allow_pickle=True))
+    except (OSError, ImportError):
+        print("Returning default data set.")
+        from skcosmo.datasets import load_csd_1000r
+
+        X, y = load_csd_1000r(return_X_y=True)
+        data = dict(X=X, Y=y, indices=np.array([]))
+    return calculate_variables(**dict(data), **kwargs)
 
 
 def calculate_variables(
-        X,
-        Y,
-        indices,
-        n_atoms,
-        N=10,
-        n_FPS=200,
-        kernel_func=gaussian_kernel,
-        i_train=None,
-        i_test=None,
-        **kwargs):
+    X,
+    Y,
+    indices,
+    n_atoms=None,
+    N=10,
+    n_FPS=200,
+    kernel_func=gaussian_kernel,
+    i_train=None,
+    i_test=None,
+    n_train=None,
+    K_train=None,
+    K_test=None,
+):
     """Loads necessary data for the tutorials"""
 
     print(len(indices), "frames in total.")
@@ -177,13 +187,13 @@ def calculate_variables(
         print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
-    try:
+    if i_train is not None:
         print("Shape of testing data is: ", i_train.shape, ".")
-    except:
+    else:
         print("Splitting Data Set")
-        try:
+        if n_train is not None:
             i_test, i_train = split_data(len(Y), n_train)
-        except:
+        else:
             n_train = int(len(Y) / 2)
             i_test, i_train = split_data(len(Y), n_train)
 
@@ -194,7 +204,9 @@ def calculate_variables(
     Y_test = Y[i_test]
 
     Y_center = Y_train.mean(axis=0)
-    Y_scale = np.linalg.norm(Y_train - Y_center, axis=0) / np.sqrt(n_train / Y_train.shape[1])
+    Y_scale = np.linalg.norm(Y_train - Y_center, axis=0) / np.sqrt(
+        n_train / Y_train.shape[1]
+    )
 
     Y = center_matrix(Y, center=Y_center)
     Y_train = center_matrix(Y_train, center=Y_center)
@@ -202,12 +214,13 @@ def calculate_variables(
     Y_train = normalize_matrix(Y_train, scale=Y_scale)
     Y_test = normalize_matrix(Y_test, scale=Y_scale)
 
-    if len(Y) == len(indices):
-        print("Computing training/testing sets from summed environment-centered soap vectors.")
-        frame_starts = [sum(nat[:i]) for i in range(len(n_atoms) + 1)]
+    if len(Y) == len(indices) and n_atoms is not None:
+        print(
+            "Computing training/testing sets from summed environment-centered soap vectors."
+        )
+        frame_starts = [sum(n_atoms[:i]) for i in range(len(n_atoms) + 1)]
         X_split = [
-            X[frame_starts[i]:frame_starts[i + 1]]
-            for i in range(len(indices))
+            X[frame_starts[i] : frame_starts[i + 1]] for i in range(len(indices))
         ]
 
         X = np.array([np.mean(xs, axis=0) for xs in X_split])
@@ -231,16 +244,20 @@ def calculate_variables(
     X_test = normalize_matrix(X_test, scale=X_scale)
     X = normalize_matrix(X, scale=X_scale)
 
-    try:
+    if K_train is not None and K_test is not None:
         print("Shape of kernel is: ", K_train.shape, ".")
-    except:
+    else:
         if len(Y) == len(indices):
-            print("Computing kernels from summing kernels of environment-centered soap vectors.")
+            print(
+                "Computing kernels from summing kernels of environment-centered soap vectors."
+            )
 
-            K_train = kernel_func([X_split[i] for i in i_train], 
-                    [X_split[i] for i in i_train])
-            K_test = kernel_func([X_split[i] for i in i_test], 
-                    [X_split[i] for i in i_train])
+            K_train = kernel_func(
+                [X_split[i] for i in i_train], [X_split[i] for i in i_train]
+            )
+            K_test = kernel_func(
+                [X_split[i] for i in i_test], [X_split[i] for i in i_train]
+            )
 
         else:
 
@@ -259,12 +276,23 @@ def calculate_variables(
     n_test = len(X_test)
     n_PC = 2
 
-    return dict(X=X, Y=Y,
-                X_split=X_split,
-                X_center=X_center, Y_center=Y_center,
-                X_scale=X_scale, Y_scale=Y_scale,
-                X_train=X_train, Y_train=Y_train,
-                X_test=X_test, Y_test=Y_test,
-                K_train=K_train, K_test=K_test,
-                i_train=i_train, i_test=i_test,
-                n_PC=n_PC, n_train=n_train, n_test=n_test)
+    return dict(
+        X=X,
+        Y=Y,
+        X_split=X_split,
+        X_center=X_center,
+        Y_center=Y_center,
+        X_scale=X_scale,
+        Y_scale=Y_scale,
+        X_train=X_train,
+        Y_train=Y_train,
+        X_test=X_test,
+        Y_test=Y_test,
+        K_train=K_train,
+        K_test=K_test,
+        i_train=i_train,
+        i_test=i_test,
+        n_PC=n_PC,
+        n_train=n_train,
+        n_test=n_test,
+    )
