@@ -134,7 +134,7 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
     """
 
     Y = Y.reshape(Y.shape[0], -1)
-    Y_center = np.array([Y_center]).reshape(1, Y.shape[1])
+    Y_center = np.array([Y_center]).flatten()
     if len(T.shape) == 1 or T.shape[-1] == 1:
         T = np.array([T[:, 0], np.zeros(T.shape[0])]).T
 
@@ -170,8 +170,6 @@ def plot_projection(Y, T, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwargs
                 kwargs.pop("vmax")
         elif "c" not in kwargs:
             Y = Y[:, 0]
-            Y_center = np.array([Y_center])
-            Y_center = Y_center.reshape(Y_center.shape[0], -1)
             Y_center = Y_center[0]
 
             if "colormap" in kwargs:
@@ -217,7 +215,7 @@ def plot_regression(Y, Yp, fig=None, ax=None, Y_scale=1.0, Y_center=0.0, **kwarg
     """
     if len(Y.shape) != 1:
         # print("Only plotting first column of Y")
-        Y_center = np.array([Y_center]).reshape(1, Y.shape[-1])[0]
+        Y_center = np.array([Y_center]).flatten()[0]
         Y = Y[:, 0]
         Yp = Yp[:, 0]
     kwargs["cmap"] = kwargs.get("cmapY", "Greys")
