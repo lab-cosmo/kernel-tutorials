@@ -25,8 +25,7 @@ jobs:
         run: |
           curl https://www.dropbox.com/s/itokckbbkvxaqsk/precomputed.npz -o ./datasets/precomputed.npz 
           python -m pip install --upgrade pip
-          pip install nbval ase numpy matplotlib scikit-learn tqdm scipy chemiscope ipywidgets 
-          pip install git+https://github.com/cosmo-epfl/scikit-cosmo.git
+          pip install nbval ase numpy matplotlib scikit-learn tqdm scipy chemiscope ipywidgets skcosmo 
           pip install git+https://github.com/cosmo-epfl/librascal.git
       - name: Run tests
         run: |
