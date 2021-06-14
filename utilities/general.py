@@ -114,7 +114,7 @@ def calculate_variables(
     print("Shape of Input Data is ", X.shape, ".")
 
     if n_FPS is not None and n_FPS < X.shape[1]:
-        fps_idxs = FPS(n_features_to_select=n_FPS).fit(X).selected_idx_
+        fps_idxs = FPS(n_to_select=n_FPS).fit(X).selected_idx_
         print("Taking a subsampling of ", n_FPS, "features")
         X = X[:, fps_idxs]
 
